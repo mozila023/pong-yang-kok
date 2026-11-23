@@ -469,8 +469,8 @@ function photoFor(id,seed){
 }
 function loadPhotos(){
  if(typeof Image==='undefined')return;
- const im=new Image();im.onload=()=>{photoImage=im;list();render()};im.src='village.webp';
- const grass=new Image();grass.onload=()=>{applyMeadow(grass);render()};grass.src='meadow.webp';
+ const im=new Image();im.crossOrigin='anonymous';im.onload=()=>{photoImage=im;list();render()};im.src='village.webp';
+ const grass=new Image();grass.crossOrigin='anonymous';grass.onload=()=>{applyMeadow(grass);render()};grass.src='meadow.webp';
 }
 
 // Static meshes share one vertex buffer. Camera movement and the sunlight pass
