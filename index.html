@@ -400,6 +400,20 @@ function makeLandscape(){
  g.putImageData(pixels,0,0);return surface;
 }
 const landscape=makeLandscape();
+let terrainRevision=0;
+function applyMeadow(image){
+ const size=landscape.width,sample=document.createElement('canvas');sample.width=sample.height=256;
+ const src=sample.getContext('2d');src.drawImage(image,0,0,256,256);
+ const tex=src.getImageData(0,0,256,256).data,g=landscape.getContext('2d'),im=g.getImageData(0,0,size,size);
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+  const n=(y*size+x)*4;if(im.data[n+2]>im.data[n]*1.12)continue;
+  const i=x/24-12.5,j=y/24-12.5,dist=Math.abs(j-3.3-Math.sin(i*.28)*1.45-i*.12);
+  const amount=Math.min(.84,Math.max(0,(dist-1.3)*1.5)),t=4*((y*3%256)*256+x*3%256);
+  const variation=9*Math.sin(i*.65+j*.22)+5*Math.sin(j*1.4+i*.3);
+  for(let k=0;k<3;k++)im.data[n+k]=im.data[n+k]*(1-amount)+(tex[t+k]*1.07+variation)*amount;
+ }
+ g.putImageData(im,0,0);terrainRevision++;
+}
 function paintGround(){
  const [ax,ay]=loc(1,0),[bx,by]=loc(0,1);
  ctx.save();ctx.transform(ax-ox,ay-oy,bx-ox,by-oy,ox,oy);
@@ -440,6 +454,25 @@ function paintTraffic(i,j,x,y,s,seed){
  polygon([[-2,-3],[0,-5],[4,-3],[5,-1],[2,0]],'#abc4c4');ctx.restore();
 }
 
+// Source cells are trimmed and packed with transparent gutters at build time.
+const photoNames=['wood','modern','row','condo','temple','market','school','clinic','tree','palm','park','livestock','cane','cassava','soy','pineapple','orchard','veg','shop','mall','coal','gold','plant','bankPlants'];
+const photoWidths=[72,74,81,80,91,78,73,67,64,48,78,77,79,78,77,78,79,79,70,81,80,79,82,40];
+const photoRects=[[6,11,308,297],[326,25,308,270],[646,16,308,287],[967,6,305,308],[6,334,308,291],[326,334,308,291],[646,359,308,242],[966,368,308,223],[6,656,308,288],[326,655,308,290],[646,664,308,272],[966,673,308,254],[6,981,308,277],[326,990,308,259],[646,991,308,258],[966,987,308,265],[6,1301,308,278],[326,1300,308,279],[646,1299,308,282],[966,1306,308,268],[6,1607,308,306],[326,1611,308,298],[646,1609,308,302],[966,1606,308,308]];
+let photoImage=null;
+function photoFor(id,seed){
+ if(!photoImage)return null;
+ if(id==='tree'&&seed%4===1)id='palm';
+ if(id==='copper'||id==='silver')id='gold';
+ const n=photoNames.indexOf(id);if(n<0)return null;
+ const [x,y,w,h]=photoRects[n],width=photoWidths[n]*(id==='tree'||id==='palm'?.92+.055*(seed%4):1);
+ return {x,y,w,h,width,height:width*h/w};
+}
+function loadPhotos(){
+ if(typeof Image==='undefined')return;
+ const im=new Image();im.onload=()=>{photoImage=im;list();render()};im.src='village.webp';
+ const grass=new Image();grass.onload=()=>{applyMeadow(grass);render()};grass.src='meadow.webp';
+}
+
 // Static meshes share one vertex buffer. Camera movement and the sunlight pass
 // use the same world coordinates as construction and electricity.
 function createScene(surface){
@@ -458,13 +491,25 @@ function createScene(surface){
    vec3 light=vec3((p.x+p.z*.92-12.5)/29.,(p.y+p.z*.53-12.5)/29.,.48-p.z*.075);
    lightPos=vec3(light.xy*.5+.5,light.z);
    gl_Position=shadowPass==1?vec4(light.xy,2.*light.z-1.,1.):vec4(2.*px.x/viewport.x-1.,1.-2.*px.y/viewport.y,-(a+b+p.z)*.009,1.);
+   if(material>2.5){
+    if(shadowPass==1){
+     float z=max(0.,-normal.y/52.);
+     vec2 footprint=p.xy+vec2(normal.x/80.,-normal.x/80.);
+     vec2 sun=(footprint+vec2(.92,.53)*(p.z+z)-12.5)/29.;
+     gl_Position=vec4(sun,2.*(.48-(p.z+z)*.075)-1.,1.);
+    }else{
+     gl_Position.xy+=zoom*normal.xy*vec2(2.,-2.)/viewport;
+     gl_Position.z-=.009*(max(.72,normal.y/20.+.03)+max(0.,-normal.y/100.));
+    }
+   }
    norm=normal;tint=color;worldPos=p;mat=int(material+.5);
  }`;
  const fragment=`#version 300 es
  precision highp float;precision highp int;in vec3 worldPos,norm,tint,lightPos;flat in int mat;
- uniform sampler2D groundTex,depthTex;uniform float time;uniform int shadowPass;
+ uniform sampler2D groundTex,depthTex,photoTex;uniform float time;uniform int shadowPass;
  out vec4 result;
  void main(){
+  if(mat==3){vec4 art=texture(photoTex,tint.xy);if(art.a<.44)discard;result=vec4(art.rgb,1.);return;}
   if(shadowPass==1){result=vec4(1.);return;}
   vec3 n=normalize(norm),light=normalize(vec3(-.92,-.53,1.));
   vec3 base=tint;float diffuse=abs(dot(n,light));
@@ -483,11 +528,14 @@ function createScene(surface){
  const program=gl.createProgram();gl.attachShader(program,shader(gl.VERTEX_SHADER,vertex));gl.attachShader(program,shader(gl.FRAGMENT_SHADER,fragment));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);
  const un=Object.fromEntries(['viewport','origin','turn','zoom','shadowPass','time','groundTex','depthTex'].map(k=>[k,gl.getUniformLocation(program,k)]));
  function texture(unit,filter){gl.activeTexture(gl.TEXTURE0+unit);let t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);for(const p of [gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER])gl.texParameteri(gl.TEXTURE_2D,p,filter);for(const p of [gl.TEXTURE_WRAP_S,gl.TEXTURE_WRAP_T])gl.texParameteri(gl.TEXTURE_2D,p,gl.CLAMP_TO_EDGE);return t}
- texture(0,gl.LINEAR);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,landscape);
+ texture(0,gl.LINEAR);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,landscape);let groundRevision=terrainRevision;
  const depth=texture(1,gl.NEAREST),res=Math.min(2048,gl.getParameter(gl.MAX_TEXTURE_SIZE));
  gl.texImage2D(gl.TEXTURE_2D,0,gl.DEPTH_COMPONENT24,res,res,0,gl.DEPTH_COMPONENT,gl.UNSIGNED_INT,null);
  const fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,depth,0);gl.drawBuffers([gl.NONE]);gl.readBuffer(gl.NONE);if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE)throw Error('Shadow framebuffer');
  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.uniform1i(un.groundTex,0);gl.uniform1i(un.depthTex,1);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
+ gl.uniform1i(gl.getUniformLocation(program,'photoTex'),2);
+ texture(2,gl.LINEAR);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([0,0,0,0]));
+ let loadedImage=null;
  let verts=[],baseX=0,baseY=0,baseZ=0,mat=0,drawCount=0,lastStats=null;
  const colors=new Map();
  function rgb(hex){let c=colors.get(hex);if(!c){const n=parseInt(hex.slice(1),16);c=[n>>16,(n>>8)&255,n&255].map(v=>v/255);colors.set(hex,c)}return c}
@@ -526,6 +574,14 @@ function createScene(surface){
   }
  }
  const mesh={face,box,blob,tree},artCtx=document.createElement('canvas').getContext('2d');
+ function texturedAsset(id,seed){
+  const art=photoFor(id,seed);if(!art)return false;
+  const bottom=id==='tree'?3:id==='bankPlants'?6:12;
+  for(const [u,v] of [[0,0],[1,0],[1,1],[0,0],[1,1],[0,1]])
+   verts.push(baseX,baseY,baseZ,(u-.5)*art.width,(v-1)*art.height+bottom,0,
+    (art.x+.5+u*(art.w-1))/photoImage.width,(art.y+.5+v*(art.h-1))/photoImage.height,0,3);
+  return true;
+ }
  function relief(i,j){const outer=Math.max(0,-i-1,i-N,-j-1,j-N);return Math.min(1,outer/6)*(1.7+1.05*Math.sin(i*.41+j*.3)+.68*Math.cos(j*.55))}
  function groundHeight(i,j){return relief(i,j)}
  const buffers=[gl.createBuffer(),gl.createBuffer()];
@@ -548,6 +604,7 @@ function createScene(surface){
      face([[a*10,b*10,.29],[a*16,b*16,.29]],null,'#dccb94',.42);
     }continue;
    }
+   if(texturedAsset(id,Math.floor(r*1000)))continue;
    if(catalog[id]&&!range[id]&&catalog[id].group!=='เกษตร')box(-18,-18,36,36,0,.26,['#c4b99e','#aa9f88','#afa48b']);
    drawAsset(artCtx,id,0,0,1,Math.floor(r*1000)%4,0,mesh);
   }
@@ -564,6 +621,12 @@ function createScene(surface){
   gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,null);gl.viewport(0,0,res,res);gl.clear(gl.DEPTH_BUFFER_BIT);gl.uniform1i(un.shadowPass,1);gl.drawArrays(gl.TRIANGLES,0,drawCount);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.bindTexture(gl.TEXTURE_2D,depth);lastStats=stats;
  }
  function draw(){
+  if(groundRevision!==terrainRevision){gl.activeTexture(gl.TEXTURE0);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,landscape);groundRevision=terrainRevision}
+  if(photoImage&&loadedImage!==photoImage){
+   gl.activeTexture(gl.TEXTURE2);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,photoImage);
+   gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+   loadedImage=photoImage;lastStats=null;lastShape='';
+  }
   if(lastStats!==stats){const shape=JSON.stringify(city.cells);if(shape!==lastShape){rebuild();lastShape=shape}lastStats=stats}
   const d=Math.min(devicePixelRatio||1,1.75),w=Math.round(innerWidth*d),h=Math.round(innerHeight*d);
   if(surface.width!==w||surface.height!==h){surface.width=w;surface.height=h}
@@ -574,7 +637,7 @@ function createScene(surface){
    const f=(trafficTime/3400+seed*.13)%1;baseX=i+(a?f:.045);baseY=j+(b?f:.045);baseZ=.01;const c=['#c16c51','#e3d7b8','#5d929d','#ddaf63'][seed%4];box(-2,-1.5,a?6:3,a?3:6,.3,1.1,[c,c,c]);box(-1.2,-.9,a?3.4:2,a?2:3.4,1.4,1,['#c7d5cc','#70909a','#687d81']);
   }
   if(selected&&hover&&hover.every(v=>v>=0&&v<N)){baseX=hover[0];baseY=hover[1];baseZ=.02;mat=2;const c=selected==='sell'?'#f39166':'#ecdc85';for(const [a,b,x,y] of [[-19,-19,19,-19],[19,-19,19,19],[19,19,-19,19],[-19,19,-19,-19]])face([[a,b,1],[x,y,1]],null,c,1.6);
-   if(catalog[selected]&&selected!=='road'&&!city.cells[hover.join(',')]&&terrain(...hover)!=='water')drawAsset(artCtx,selected,0,0,1,0,0,mesh);
+   if(catalog[selected]&&selected!=='road'&&!city.cells[hover.join(',')]&&terrain(...hover)!=='water'&&!texturedAsset(selected,0))drawAsset(artCtx,selected,0,0,1,0,0,mesh);
   }
   baseX=baseY=baseZ=mat=0;bind(buffers[1]);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(verts),gl.DYNAMIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,verts.length/10);
  }
@@ -602,6 +665,8 @@ function diamond(x,y,s,color){polygon([[x,y-20*s],[x+40*s,y],[x,y+20*s],[x-40*s,
 const spriteCache=new Map();
 let trafficTime=0,pendingSale=null;
 function sprite(c,id,x,y,s,seed){
+ const art=photoFor(id,seed);
+ if(art){c.drawImage(photoImage,art.x,art.y,art.w,art.h,x-art.width*s/2,y+(id==='tree'?2:12)*s-art.height*s,art.width*s,art.height*s);return}
  const angle=c===ctx?orientation:0;
  let k=id+'-'+(seed%4)+'-'+angle,im=spriteCache.get(k);if(!im){im=document.createElement('canvas');im.width=160;im.height=220;drawAsset(im.getContext('2d'),id,80,176,1.5,seed%4,angle);spriteCache.set(k,im)}
  c.drawImage(im,x-80*s/1.5,y-176*s/1.5,160*s/1.5,220*s/1.5);
@@ -643,9 +708,9 @@ function render(){
  let [x,y]=loc(...e.p),[u,v]=loc(...n.p);y-=(e.id==='pylon'?51:34)*s;v-=(n.id==='pylon'?51:34)*s;
  ctx.strokeStyle='#3d493c99';ctx.lineWidth=s;ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo((x+u)/2,(y+v)/2+9*s,u,v);ctx.stroke()}
 }
-function center(){orientation=0;scale=innerWidth<650?1.15:Math.min(1.65,innerWidth/850);ox=innerWidth*(innerWidth<650?.52:.57)+80*scale;oy=innerHeight*.53-520*scale;render()}
+function center(){orientation=0;scale=innerWidth<650?1.34:Math.min(2.25,innerWidth/655);ox=innerWidth*(innerWidth<650?.52:.57)+80*scale;oy=innerHeight*.53-520*scale;render()}
 function resize(){let d=Math.min(devicePixelRatio||1,2);canvas.width=innerWidth*d;canvas.height=innerHeight*d;ctx.setTransform(d,0,0,d,0,0);center()}
-function zoom(f,x=innerWidth*.55,y=innerHeight*.5){let z=Math.max(.45,Math.min(2.7,scale*f));ox=x-(x-ox)*z/scale;oy=y-(y-oy)*z/scale;scale=z;render()}
+function zoom(f,x=innerWidth*.55,y=innerHeight*.5){let z=Math.max(.45,Math.min(5,scale*f));ox=x-(x-ox)*z/scale;oy=y-(y-oy)*z/scale;scale=z;render()}
 function refresh(){stats=analyze(city);$('cash').textContent='฿'+fmt(city.cash);$('pop').textContent=fmt(city.pop);$('approval').textContent=Math.round(city.approval)+'%';$('date').textContent=new Intl.DateTimeFormat('th-TH',{month:'short',year:'numeric'}).format(new Date(2026,city.month,1));$('news').textContent=city.news;if($('modal').open)show(tab);render();save()}
 function tick(){advance(city);refresh()}
 function pause(){clearInterval(timer);timer=null;$('play').textContent='▶'}
@@ -692,6 +757,7 @@ try{scene=createScene($('world3d'))}catch(err){console.warn('3D renderer unavail
 function fallback(){scene=null;$('world3d').hidden=true;canvas.style.opacity='1'}
 if(scene){canvas.style.opacity='0';$('world3d').addEventListener('webglcontextlost',e=>{e.preventDefault();fallback();render()})}else fallback();
 addEventListener('resize',resize);list();fold(innerWidth<720);resize();refresh();
+loadPhotos();
 setInterval(()=>{if(timer&&!document.hidden){trafficTime+=100;render()}},100);
 
 </script>
