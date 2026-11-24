@@ -64,9 +64,10 @@ function newCity(){
  return {v:1,cells,cash:24000,tax:8,services:2,month:0,pop:108,approval:66,level:0,opposition:false,campaign:0,wins:0,trust:2,influence:0,actionMonth:-1,party:4000,news:'ชาวบ้านเปิดกาดเช้า เทศบาลพร้อมรับฟังความคิดเห็น',rival:55,hist:[],debt:0,loanMonth:-99,speed:0};
 }
 // Saved games are untrusted: keep only known structures on valid tiles and clamp every number.
+function validSave(old){return !!old&&typeof old==='object'&&old.v===1&&!!old.cells&&typeof old.cells==='object'&&!Array.isArray(old.cells)}
 function sanitizeCity(old){
  const base=newCity();
- if(!old||typeof old!=='object'||!old.cells||typeof old.cells!=='object')return base;
+ if(!validSave(old))return base;
  const cells={};
  for(const [k,id] of Object.entries(old.cells)){
   const m=/^(-?\d+),(-?\d+)$/.exec(k);if(!m||typeof id!=='string'||!Object.hasOwn(catalog,id))continue;
@@ -76,14 +77,15 @@ function sanitizeCity(old){
  cells[ENTRANCE]='road';
  const num=(v,d,lo,hi)=>{if(v===null||v===undefined||v==='')return d;v=Number(v);return Number.isFinite(v)?clamp(v,lo,hi):d};
  const int=(v,d,lo,hi)=>Math.round(num(v,d,lo,hi));
+ const month=int(old.month,0,0,1e6);
  return {...base,cells,
-  cash:num(old.cash,base.cash,-1e9,1e9),tax:int(old.tax,8,2,22),services:int(old.services,2,0,5),month:int(old.month,0,0,1e6),
+  cash:num(old.cash,base.cash,-1e9,1e9),tax:int(old.tax,8,2,22),services:int(old.services,2,0,5),month,
   pop:int(old.pop,base.pop,0,1e6),approval:num(old.approval,base.approval,0,100),level:int(old.level,0,0,roles.length-1),
   opposition:old.opposition===true,campaign:num(old.campaign,0,0,500),wins:int(old.wins,0,0,99),trust:num(old.trust,2,-20,14),
   influence:num(old.influence,0,0,500),actionMonth:int(old.actionMonth,-1,-1,1e6),party:num(old.party,4000,0,1e9),
   news:typeof old.news==='string'?old.news.slice(0,240):base.news,rival:num(old.rival,55,20,90),
   hist:Array.isArray(old.hist)?old.hist.map(Number).filter(Number.isFinite).map(v=>clamp(v,0,100)).slice(-6):[],
-  debt:num(old.debt,0,0,1e7),loanMonth:int(old.loanMonth,-99,-99,1e6),speed:int(old.speed,0,0,2)};
+  debt:num(old.debt,0,0,1e7),loanMonth:int(old.loanMonth,-99,-99,month),speed:int(old.speed,0,0,2)};
 }
 function analyze(s){
  const entries=Object.entries(s.cells).filter(([,id])=>catalog[id]).map(([k,id])=>({k,id,p:k.split(',').map(Number)}));
@@ -106,7 +108,7 @@ function analyze(s){
  if(['เกษตร','เหมือง','ค้าขาย'].includes(a.group))jobs+=Math.round((8+a.cost/130)*factor);
  if(a.group==='เกษตร')farmTrade+=a.cost*.042*factor;
  if(a.group==='เหมือง'){farmTrade+=a.cost*.056*factor;mines.push(e.p)}
- if(a.group==='ค้าขาย'){shopTrade+=a.cost*.042*factor;shopSlots+=SHOP_WEIGHT[e.id]||1}
+ if(a.group==='ค้าขาย'){shopTrade+=a.cost*.042*factor;shopSlots+=(SHOP_WEIGHT[e.id]||1)*factor}
  if(a.group==='ชุมชน'){service[e.id]+=factor;if(e.id==='park')parks.push(e.p)}
  }
  // Parks within three tiles soften a mine's pollution; a running coal plant also pollutes.
@@ -859,7 +861,7 @@ function emit(type,data={}){try{dispatchEvent(new CustomEvent('pyk',{detail:{typ
 function loadCity(){
  let raw=null;try{raw=localStorage.getItem(slot)}catch{return newCity()}
  if(!raw)return newCity();
- try{const old=JSON.parse(raw);if(old?.v===1&&old.cells)return sanitizeCity(old)}catch{}
+ try{const old=JSON.parse(raw);if(validSave(old))return sanitizeCity(old)}catch{}
  try{localStorage.setItem(slot+'-backup',raw)}catch{}
  return newCity();
 }
@@ -987,7 +989,9 @@ function sprite(c,id,x,y,s,seed){
  c.drawImage(im,x-80*s/1.5,y-176*s/1.5,160*s/1.5,220*s/1.5);
 }
 // Drawing happens in the animation loop; render() just requests a frame.
-function render(){dirty=true}
+let rafId=0;
+function wake(){if(!rafId)rafId=requestAnimationFrame(frame)}
+function render(){dirty=true;wake()}
 
 // ---- Placement rules and highlights ----
 function placeProblem(i,j,tool){
@@ -1186,7 +1190,7 @@ function drawFx(now){
 // ---- Simulation clock ----
 const SPEEDS=[4500,2250,1125],SPEED_LABELS=['1×','2×','4×'];
 function startTimer(){clearInterval(timer);timer=setInterval(tick,SPEEDS[city.speed||0]);$('play').textContent='Ⅱ';$('play').setAttribute('aria-pressed','true')}
-function play(){if(timer)return;startTimer();emit('play',{speed:city.speed||0})}
+function play(){if(timer)return;startTimer();render();emit('play',{speed:city.speed||0})}
 function pause(){if(!timer)return;clearInterval(timer);timer=null;$('play').textContent='▶';$('play').setAttribute('aria-pressed','false');emit('pause')}
 function setSpeed(n){city.speed=((n%SPEEDS.length)+SPEEDS.length)%SPEEDS.length;$('speed').textContent=SPEED_LABELS[city.speed];if(timer)startTimer();save();emit('speed',{speed:city.speed,label:SPEED_LABELS[city.speed]})}
 const CASH_LOW=2000;let lastNews=null,cashWasLow=null;
@@ -1222,17 +1226,22 @@ function showElection(r){
 // ---- Input ----
 canvas.oncontextmenu=e=>e.preventDefault();
 canvas.onwheel=e=>{e.preventDefault();const dy=e.deltaMode===1?e.deltaY*16:e.deltaMode===2?e.deltaY*400:e.deltaY;zoom(Math.exp(-clamp(dy,-300,300)*(e.ctrlKey?.01:.0012)),e.clientX,e.clientY)};
+// A pinch follows two specific pointers; it is rebased whenever that pair changes.
+function startPinch(){
+ const [[a,p],[b,q]]=[...pointers.entries()];
+ pinch={a,b,d0:Math.hypot(p.x-q.x,p.y-q.y)||1,s0:scale,W:world((p.x+q.x)/2,(p.y+q.y)/2)};drag=null;hover=null;
+}
 canvas.onpointerdown=e=>{
  if(e.pointerType==='mouse'&&e.button!==0)return;
  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});try{canvas.setPointerCapture(e.pointerId)}catch{}
  fling=null;finishCamera();
- if(pointers.size===2){const [p,q]=[...pointers.values()];pinch={d0:Math.hypot(p.x-q.x,p.y-q.y)||1,s0:scale,W:world((p.x+q.x)/2,(p.y+q.y)/2)};drag=null;hover=null;return}
+ if(pointers.size===2){startPinch();return}
  if(pointers.size>2)return;
  drag={id:e.pointerId,x:e.clientX,y:e.clientY,ox,oy,moved:false,vx:0,vy:0,t:performance.now(),lx:e.clientX,ly:e.clientY,slop:e.pointerType==='mouse'?5:10};
 };
 canvas.onpointermove=e=>{
  const pt=pointers.get(e.pointerId);if(pt){pt.x=e.clientX;pt.y=e.clientY}
- if(pinch){if(pointers.size>=2){const [p,q]=[...pointers.values()],mx=(p.x+q.x)/2,my=(p.y+q.y)/2;scale=clampScale(pinch.s0*Math.hypot(p.x-q.x,p.y-q.y)/pinch.d0);const [x,y]=loc(...pinch.W);ox+=mx-x;oy+=my-y;render()}return}
+ if(pinch){const p=pointers.get(pinch.a),q=pointers.get(pinch.b);if(p&&q){const mx=(p.x+q.x)/2,my=(p.y+q.y)/2;scale=clampScale(pinch.s0*Math.hypot(p.x-q.x,p.y-q.y)/pinch.d0);const [x,y]=loc(...pinch.W);ox+=mx-x;oy+=my-y;render()}return}
  if(drag&&e.pointerId===drag.id){
   const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>drag.slop)drag.moved=true;
   if(drag.moved){ox=drag.ox+dx;oy=drag.oy+dy;const t=performance.now(),span=Math.max(1,t-drag.t);drag.vx=drag.vx*.6+(e.clientX-drag.lx)/span*.4;drag.vy=drag.vy*.6+(e.clientY-drag.ly)/span*.4;drag.t=t;drag.lx=e.clientX;drag.ly=e.clientY;render()}
@@ -1243,7 +1252,7 @@ function endPointer(e,cancel){
  if(!pointers.has(e.pointerId))return;pointers.delete(e.pointerId);
  if(pinch){
   // Lifting a finger after a pinch never counts as a tap.
-  if(pointers.size<2){pinch=null;emitZoom(scale,true)}
+  if(e.pointerId===pinch.a||e.pointerId===pinch.b){if(pointers.size>=2)startPinch();else{pinch=null;emitZoom(scale,true)}}
   const rest=[...pointers.entries()][0];drag=rest&&!pinch?{id:rest[0],x:rest[1].x,y:rest[1].y,ox,oy,moved:true,vx:0,vy:0,t:performance.now(),lx:rest[1].x,ly:rest[1].y,slop:10}:null;
   return;
  }
@@ -1255,7 +1264,7 @@ function endPointer(e,cancel){
 }
 canvas.onpointerup=e=>endPointer(e,false);canvas.onpointercancel=e=>endPointer(e,true);
 canvas.onpointerleave=e=>{if(e.pointerType==='mouse'){hover=null;render()}};
-function reject(reason,i,j){tell(reason);if(i!==undefined&&i>=0&&j>=0&&i<N&&j<N)flashes.push({i,j,t0:performance.now(),dur:500,color:'#ff5a46'});emit('invalid',{reason,x:i,y:j})}
+function reject(reason,i,j){tell(reason);if(i!==undefined&&i>=0&&j>=0&&i<N&&j<N){flashes.push({i,j,t0:performance.now(),dur:500,color:'#ff5a46'});render()}emit('invalid',{reason,x:i,y:j})}
 let saleResume=false;
 function handleTap(x,y){
  const [i,j]=tile(x,y),k=key(i,j),id=city.cells[k];
@@ -1269,7 +1278,7 @@ function handleTap(x,y){
   $('sale').showModal();emit('modal-open',{id:'sale'});return;
  }
  if(id){
-  inspect={i,j,t0:performance.now()};
+  inspect={i,j,t0:performance.now()};render();
   tell(k===ENTRANCE?'ซุ้มประตูเมือง • ถนนทุกสายต้องเชื่อมถึงจุดนี้':cellName(id,i,j)+(id==='road'?(stats.roads.has(k)?' • เชื่อมทางเข้าเมือง':' • ยังไม่เชื่อมทางเข้าเมือง'):(' • '+(stats.access([i,j])?'ติดถนน':'ห่างถนน')+' • '+(stats.powered([i,j])?'มีไฟฟ้า':'ขาดไฟฟ้า'))));
   return;
  }
@@ -1302,11 +1311,14 @@ $('sale').addEventListener('close',()=>{pendingSale=null;if(saleResume){saleResu
 $('electionOk').onclick=()=>$('election').close();
 $('election').addEventListener('close',()=>{if(electionResume){electionResume=false;play()}});
 for(const id of ['modal','sale','election'])$(id).addEventListener('close',()=>emit('modal-close',{id}));
+// Closing the council always disarms the two-step reset.
+$('modal').addEventListener('close',()=>{resetArmed=0});
 // Keyboard: ui.js owns the letter/number shortcuts; the map handles panning and Escape.
 addEventListener('keydown',e=>{
+ if(e.defaultPrevented)return;
  if(e.key==='Escape'){
-  const open=['election','sale','modal'].filter(id=>$(id).open);
-  if(open.length){e.preventDefault();open.forEach(id=>$(id).close());return}
+  // An open modal handles Escape natively (only the topmost one closes).
+  if(document.querySelector('dialog[open]'))return;
   if(e.target.closest?.('select'))return;
   drag=null;inspect=null;selectTool(null);return;
  }
@@ -1337,7 +1349,7 @@ function show(which){
   for(let [id,prop] of [['tax','tax'],['svc','services']])$(id).oninput=e=>{if(s.opposition)return;s[prop]=Number(e.target.value);stats=analyze(s);updateModal();save()};
   $('loan').onclick=()=>{const why=takeLoan(s);if(why)return reject(why);tell(s.news);emit('politics',{kind:'loan',amount:LOAN});refresh()};
   $('reset').onclick=()=>{
-   if(performance.now()-resetArmed>4000){resetArmed=performance.now();$('reset').textContent='แตะอีกครั้งเพื่อยืนยัน';setTimeout(()=>{if($('reset'))$('reset').textContent='เริ่มเมืองใหม่'},4000);return}
+   if(!resetArmed||performance.now()-resetArmed>4000){resetArmed=performance.now();$('reset').textContent='แตะอีกครั้งเพื่อยืนยัน';const armedAt=resetArmed;setTimeout(()=>{if(resetArmed===armedAt){resetArmed=0;if($('reset'))$('reset').textContent='เริ่มเมืองใหม่'}},4000);return}
    resetArmed=0;pause();city=newCity();cars=[];anims=[];particles=[];inspect=null;scene?.invalidate();$('modal').close();selectTool(null);refresh();setSpeed(0);tell('เริ่มเมืองใหม่แล้ว');emit('politics',{kind:'reset'});
   };
  }
@@ -1378,7 +1390,7 @@ function resize(){
 }
 let lastFrame=0,lastDraw=0,frameFailed=false;
 function frame(now){
- requestAnimationFrame(frame);
+ rafId=0;
  const dt=lastFrame?Math.min(.1,(now-lastFrame)/1000):0;lastFrame=now;
  let active=stepCamera(now);active=stepFling(dt)||active;
  if(updateEnv(dt))active=true;
@@ -1386,11 +1398,15 @@ function frame(now){
  updateTraffic(reduceMotion?0:dt);updateParticles(dt,now);
  if(anims.length){pruneAnims(now);active=true}
  if(particles.length||floaters.length||flashes.length||birds.length||inspect||(hover&&selected))active=true;
- const idle=!reduceMotion?(!scene?66:lowPower?33:0):(timer?250:Infinity);
- if(!dirty&&!active&&now-lastDraw<idle)return;
- lastDraw=now;dirty=false;
- try{updateParcels();if(scene)scene.draw(now);else render2D(now);drawFx(now)}
- catch(err){console.error('Render failed',err);if(scene)fallback();else if(!frameFailed)frameFailed=true}
+ // idle: redraw cadence with nothing happening; budget: minimum gap between any two draws.
+ const idle=!reduceMotion?(!scene?66:lowPower?33:0):(timer?250:Infinity),budget=lowPower?33:!scene?16:0;
+ if((dirty||active||now-lastDraw>=idle)&&now-lastDraw>=budget){
+  lastDraw=now;dirty=false;
+  try{updateParcels();if(scene)scene.draw(now);else render2D(now);drawFx(now)}
+  catch(err){console.error('Render failed',err);if(scene)fallback();else if(!frameFailed)frameFailed=true}
+ }
+ // Sleep when fully idle; render() wakes the loop again.
+ if(dirty||active||idle!==Infinity)wake();
 }
 let scene=null;
 try{scene=createScene($('world3d'))}catch(err){console.warn('3D renderer unavailable',err)}
@@ -1400,7 +1416,7 @@ motionQuery.addEventListener?.('change',syncMotion);new MutationObserver(syncMot
 // Small hook for ui.js settings (all optional).
 window.PYKGraphics={setDayNight(on){env.dayNight=!!on;render()},isDayNight:()=>env.dayNight,hour:()=>env.hour,reducedMotion:()=>reduceMotion};
 addEventListener('resize',resize);$('speed').textContent=SPEED_LABELS[city.speed||0];list();fold(innerWidth<720);resize();refresh();
-loadPhotos();requestAnimationFrame(frame);
+loadPhotos();wake();
 
 </script>
 <script src="audio.js"></script><script src="ui.js"></script>
