@@ -1367,11 +1367,11 @@ let resetArmed=0;
 function show(which){
  tab=which;const s=city;
  if(which==='politics')$('detail').innerHTML='<h2 id="modalTitle">สนามเลือกตั้ง</h2><p id="pRole"></p><div class="facts"><div>เลือกตั้งใน<b id="pNext"></b></div><div>เงินพรรค<b id="pParty"></b></div><div>ความเชื่อมั่นสะสม<b id="pTrust"></b></div><div>คะแนนรอบนี้<b id="pBonus"></b></div><div id="pBaseLabel">คะแนนนิยมเฉลี่ย 6 เดือน<b id="pBase"></b></div></div><p>ลงพื้นที่ได้เดือนละครั้ง ใช้เงินพรรคแยกจากคลังเทศบาล</p><div class="act"><button class="primary" id="good">เวทีรับฟัง · ฿180</button><button class="primary" id="bad">ซื้อเสียง · ฿900</button></div><p><small id="pRisk"></small></p><p>เสียงถึง 50% ชนะเลือกตั้ง ชนะสองสมัยเลื่อนระดับ ผลงานเทศบาลช่วยฝ่ายบริหาร เมื่อแพ้ คู่แข่งจะบริหารเมืองแทน และความนิยมของคู่แข่งจะค่อย ๆ ลดลง</p><small>เส้นทางสมมติในเกม · ตำบล › อำเภอ › จังหวัด › สส. › นายกรัฐมนตรี</small>';
- else $('detail').innerHTML='<h2 id="modalTitle">สภาเมือง</h2><p>งบประมาณต่อเดือน</p><div class="facts"><div>รายรับ<b id="fIncome"></b></div><div>รายจ่าย<b id="fExpense"></b></div><div>มีไฟฟ้าใช้<b id="fPower"></b></div><div>ตำแหน่งงาน<b id="fJobs"></b></div><div>ความต้องการค้าขาย<b id="fDemand"></b></div><div>บริการชุมชน<b id="fCare"></b></div></div><label>ภาษี <span><span id="taxVal"></span>%</span><input id="tax" type="range" min="2" max="22"></label><label>งบบริการ <span><span id="svcVal"></span>/5</span><input id="svc" type="range" min="0" max="5"></label><div class="act"><button class="primary" id="loan">กู้ฉุกเฉิน +฿'+fmt(LOAN)+'</button><button class="danger" id="reset">เริ่มเมืองใหม่</button></div><p><small id="fDebt"></small></p><p><small>ถนนทุกสายต้องต่อถึงซุ้มประตูเมืองด้านตะวันตก วางถนนบนลำน้ำเพื่อสร้างสะพานข้ามไปฝั่งเหนือ เหมืองถ่านหินและโรงไฟฟ้าต้องติดถนน เสาไฟเชื่อมกันเมื่อเสาต้นใดต้นหนึ่งเอื้อมถึง ภาษีสูงทำให้ความนิยมลดลง โรงเรียน อนามัย วัด และสวน ดูแลคนได้จำนวนจำกัด เมืองโตต้องสร้างเพิ่ม</small></p><p><small>ลากแผนที่เพื่อเลื่อน • ใช้ปุ่ม + / − หรือสองนิ้วเพื่อซูม • แตะอาคารเพื่อดูบริการ • บันทึกอัตโนมัติในเบราว์เซอร์</small></p>';
+ else $('detail').innerHTML='<h2 id="modalTitle">สภาเมือง</h2><p>งบประมาณต่อเดือน</p><div class="facts"><div>รายรับ<b id="fIncome"></b></div><div>รายจ่าย<b id="fExpense"></b></div><div>มีไฟฟ้าใช้<b id="fPower"></b></div><div>ตำแหน่งงาน<b id="fJobs"></b></div><div>ความต้องการค้าขาย<b id="fDemand"></b></div><div>บริการชุมชน<b id="fCare"></b></div></div><div class="ui-row council-row first"><span><label class="ui-lab" for="tax">ภาษี</label><span class="ui-sub">ภาษีสูงได้รายรับมาก แต่ความนิยมลดลง</span></span><span class="ui-val"><span id="taxVal"></span>%</span><div class="ui-range-wrap"><input id="tax" class="ui-range" type="range" min="2" max="22"></div></div><div class="ui-row council-row"><span><label class="ui-lab" for="svc">งบบริการ</label><span class="ui-sub">บริการดีขึ้นช่วยความนิยม แต่รายจ่ายเพิ่ม</span></span><span class="ui-val"><span id="svcVal"></span>/5</span><div class="ui-range-wrap"><input id="svc" class="ui-range" type="range" min="0" max="5"></div></div><div class="act"><button class="primary" id="loan">กู้ฉุกเฉิน +฿'+fmt(LOAN)+'</button><button class="danger" id="reset">เริ่มเมืองใหม่</button></div><p><small id="fDebt"></small></p><p><small>ถนนทุกสายต้องต่อถึงซุ้มประตูเมืองด้านตะวันตก วางถนนบนลำน้ำเพื่อสร้างสะพานข้ามไปฝั่งเหนือ เหมืองถ่านหินและโรงไฟฟ้าต้องติดถนน เสาไฟเชื่อมกันเมื่อเสาต้นใดต้นหนึ่งเอื้อมถึง ภาษีสูงทำให้ความนิยมลดลง โรงเรียน อนามัย วัด และสวน ดูแลคนได้จำนวนจำกัด เมืองโตต้องสร้างเพิ่ม</small></p><p><small>ลากแผนที่เพื่อเลื่อน • ใช้ปุ่ม + / − หรือสองนิ้วเพื่อซูม • แตะอาคารเพื่อดูบริการ • บันทึกอัตโนมัติในเบราว์เซอร์</small></p>';
  if(which==='politics'){for(let [id,kind] of [['good','good'],['bad','buy']])$(id).onclick=()=>{const before=s.party,msg=politics(s,kind);tell(msg);if(s.party<before)emit('politics',{kind});else emit('invalid',{reason:msg});refresh()}}
  else{
   // Sliders update the budget in place while dragging, without rebuilding the dialog.
-  for(let [id,prop] of [['tax','tax'],['svc','services']])$(id).oninput=e=>{if(s.opposition)return;s[prop]=Number(e.target.value);stats=analyze(s);updateModal();save()};
+  for(let [id,prop] of [['tax','tax'],['svc','services']])$(id).oninput=e=>{if(s.opposition)return;s[prop]=Number(e.target.value);paintRange(e.target);stats=analyze(s);updateModal();save()};
   $('loan').onclick=()=>{const why=takeLoan(s);if(why)return reject(why);tell(s.news);emit('politics',{kind:'loan',amount:LOAN});refresh()};
   $('reset').onclick=()=>{
    if(!resetArmed||performance.now()-resetArmed>4000){resetArmed=performance.now();$('reset').textContent='แตะอีกครั้งเพื่อยืนยัน';const armedAt=resetArmed;setTimeout(()=>{if(resetArmed===armedAt){resetArmed=0;if($('reset'))$('reset').textContent='เริ่มเมืองใหม่'}},4000);return}
@@ -1381,6 +1381,8 @@ function show(which){
  updateModal();
  if(!$('modal').open){$('modal').showModal();emit('modal-open',{id:'modal',tab:which})}
 }
+// Slider fill uses the --v custom property, as in the settings dialog.
+function paintRange(el){const lo=+el.min,hi=+el.max;el.style.setProperty('--v',(hi>lo?(+el.value-lo)/(hi-lo)*100:0)+'%')}
 function updateModal(){
  const s=city,a=stats,set=(id,v)=>{const el=$(id);if(el&&el.textContent!==String(v))el.textContent=v};
  if(tab==='politics'){
@@ -1395,7 +1397,7 @@ function updateModal(){
  set('fIncome','฿ '+fmt(a.income));set('fExpense','฿ '+fmt(a.expense));set('fPower',a.coverage+'%');set('fJobs',a.jobs);
  set('fDemand',a.demand?Math.round(a.demand*100)+'%':'—');set('fCare',Math.round(25*(a.park+a.edu+a.health+a.faith))+'%');
  set('taxVal',s.tax);set('svcVal',s.services);
- for(const [id,prop] of [['tax','tax'],['svc','services']]){const el=$(id);el.disabled=s.opposition;if(document.activeElement!==el&&+el.value!==s[prop])el.value=s[prop]}
+ for(const [id,prop] of [['tax','tax'],['svc','services']]){const el=$(id);el.disabled=s.opposition;if(document.activeElement!==el&&+el.value!==s[prop])el.value=s[prop];paintRange(el)}
  $('loan').disabled=s.opposition||s.cash>=0||s.month-s.loanMonth<12;
  set('fDebt',(s.debt>0?'หนี้คงค้าง ฿'+fmt(s.debt)+' · ผ่อนเดือนละ ฿'+fmt(Math.min(s.debt,DEBT_PAYMENT))+' • ':'')+'กู้ฉุกเฉินได้ปีละครั้งเมื่อเงินคลังติดลบ ความนิยม −6');
 }
