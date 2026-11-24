@@ -1180,9 +1180,9 @@ function drawFx(now){
     const head=10*s;fxc.globalAlpha=Math.min(1,night);fxc.drawImage(lampGlow,x-head/2,y0+L.dy*s-head/2,head,head);continue;
    }
    const y=y0+L.dy*s,size=L.r*s*2;if(!on(x,y,size))continue;
-   fxc.globalAlpha=Math.min(1,night*L.str*.85);fxc.drawImage(warmGlow,x-size/2,y-size/2,size,size);
+   fxc.globalAlpha=Math.min(1,night*L.str*.5);fxc.drawImage(warmGlow,x-size*.6,y-size*.2,size*1.2,size*.55);
    // Powered buildings get a bright window core.
-   if(L.str>.5){const core=size*.42;fxc.globalAlpha=Math.min(1,night*.75);fxc.drawImage(windowGlow,x-core/2,y-core/2,core,core)}
+   if(L.str>.5){const core=size*.2;fxc.globalAlpha=Math.min(1,night*.6);fxc.drawImage(windowGlow,x-core/2,y-core/2,core,core)}
   }
   for(const c of cars){
    const [x,y]=loc(c.x,c.y);if(!on(x,y,30*s))continue;
