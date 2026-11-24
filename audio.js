@@ -344,6 +344,8 @@
       applySettings();
       saveSettings();
     },
-    isMuted: () => settings.muted
+    isMuted: () => settings.muted,
+    // The engine owns the audio settings; the UI reads them from here.
+    getSettings: () => ({ ...settings })
   };
 })();

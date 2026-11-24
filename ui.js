@@ -34,9 +34,25 @@
   function retrigger(n, cls) { n.classList.remove(cls); void n.offsetWidth; n.classList.add(cls); }
   function audio() { return window.GameAudio || null; }
 
+  /* Inline SVG icons (currentColor): symbol glyphs render as tofu in many fonts. */
+  var ICONS = {
+    "music": "<path d=\"M9 17.5V5.5l10-2v12\"/><circle cx=\"6.5\" cy=\"17.5\" r=\"2.5\"/><circle cx=\"16.5\" cy=\"15.5\" r=\"2.5\"/>",
+    "gear": "<circle cx=\"12\" cy=\"12\" r=\"6\"/><circle cx=\"12\" cy=\"12\" r=\"2.3\"/><path d=\"M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5M5.3 5.3l2.5 2.5M16.2 16.2l2.5 2.5M5.3 18.7l2.5-2.5M16.2 7.8l2.5-2.5\" stroke-width=\"2.6\"/>",
+    "help": "<path d=\"M9 9.2a3 3 0 1 1 4.2 2.75c-.8.35-1.2 1-1.2 1.85V15\"/><circle cx=\"12\" cy=\"18.5\" r=\"1.2\" fill=\"currentColor\" stroke=\"none\"/>",
+    "close": "<path d=\"M6.5 6.5l11 11M17.5 6.5l-11 11\"/>",
+    "house": "<path d=\"M4 11.5L12 4.5l8 7\"/><path d=\"M6.5 9.5v10h11v-10\"/><path d=\"M10 19.5v-5h4v5\"/>",
+    "star": "<path d=\"M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z\" fill=\"currentColor\" stroke=\"none\"/>"
+  };
+  function icon(name) {
+    var s = h('span', { class: 'ui-svg', 'aria-hidden': 'true' });
+    s.innerHTML = '<svg class="ico" viewBox="0 0 24 24" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICONS[name] + '</svg>';
+    return s;
+  }
+
   /* ---------------- preferences ---------------- */
   var KEY = 'pyk-ui';
-  var prefs = { music: 0.6, sfx: 0.8, muted: false, reduce: false, tutorial: false, audioTouched: false };
+  // Audio settings are owned by audio.js (GameAudio); only UI prefs live here.
+  var prefs = { reduce: false, tutorial: false };
   try {
     var stored = JSON.parse(localStorage.getItem(KEY));
     if (stored && typeof stored === 'object') for (var pk in prefs) if (pk in stored) prefs[pk] = stored[pk];
@@ -47,39 +63,28 @@
   root.classList.toggle('ui-reduce', !!prefs.reduce);
 
   /* ---------------- audio bridge ---------------- */
-  function applyAudio() {
+  // Fallback only used when audio.js is missing; mirrors the engine defaults.
+  var audioFallback = { music: 0.5, sfx: 0.7, muted: false };
+  function audioSettings() {
     var A = audio();
-    if (!A || !prefs.audioTouched) return false;
-    try {
-      if (A.setMusicVolume) A.setMusicVolume(prefs.music);
-      if (A.setSfxVolume) A.setSfxVolume(prefs.sfx);
-      if (A.mute) A.mute(!!prefs.muted);
-    } catch (e) { /* ignore */ }
-    return true;
+    try { if (A && typeof A.getSettings === 'function') return A.getSettings(); } catch (e) { /* ignore */ }
+    return audioFallback;
   }
-  function seedFromAudioStore() {
-    if (prefs.audioTouched) return;
-    try {
-      var a = JSON.parse(localStorage.getItem('pyk-audio'));
-      if (!a || typeof a !== 'object') return;
-      var pick = function () {
-        for (var i = 0; i < arguments.length; i++) if (typeof a[arguments[i]] === 'number') return Math.max(0, Math.min(1, a[arguments[i]]));
-        return null;
-      };
-      var m = pick('music', 'musicVolume', 'musicVol'), s = pick('sfx', 'sfxVolume', 'sfxVol');
-      if (m != null) prefs.music = m;
-      if (s != null) prefs.sfx = s;
-      if (typeof a.muted === 'boolean') prefs.muted = a.muted;
-    } catch (e) { /* ignore */ }
-  }
-  function curMuted() {
+  // Writes exactly one audio setting through the engine.
+  function setAudio(field, value) {
     var A = audio();
-    try { if (A && typeof A.isMuted === 'function') return !!A.isMuted(); } catch (e) { /* ignore */ }
-    return !!prefs.muted;
+    try {
+      if (A) {
+        if (field === 'music' && A.setMusicVolume) A.setMusicVolume(value);
+        else if (field === 'sfx' && A.setSfxVolume) A.setSfxVolume(value);
+        else if (field === 'muted' && A.mute) A.mute(!!value);
+        return;
+      }
+    } catch (e) { /* ignore */ }
+    audioFallback[field] = value;
   }
-  function setMuted(v) {
-    prefs.muted = !!v; prefs.audioTouched = true; savePrefs(); applyAudio(); syncMute();
-  }
+  function curMuted() { return !!audioSettings().muted; }
+  function setMuted(v) { setAudio('muted', !!v); syncMute(); }
   function toggleMute() { setMuted(!curMuted()); }
 
   /* ---------------- fonts (progressive enhancement) ---------------- */
@@ -101,7 +106,7 @@
   }
 
   /* ---------------- tooltips ---------------- */
-  var TIPS = { play: 'เดินเวลา / หยุด (Space)', next: 'ข้ามไป 1 เดือน (N)', rotate: 'หมุนกล้อง (R)', minus: 'ซูมออก (−)',
+  var TIPS = { play: 'เดินเวลา / หยุด (Space)', next: 'ข้ามไป 1 เดือน (N)', rotate: 'หมุนกล้อง (R)', minus: 'ซูมออก (-)',
     plus: 'ซูมเข้า (+)', home: 'กลับกลางเมือง (H)', gov: 'สภาเมือง (G)', political: 'การเมือง (P)',
     sellTool: 'ทุบ / ขาย (X)', fold: 'พับเมนู (B)', unfold: 'เปิดเมนูก่อสร้าง (B)' };
   function addTips() {
@@ -122,17 +127,15 @@
   }
   function fmtNum(v, comma) { v = Math.round(v); return comma ? v.toLocaleString('th-TH') : String(v); }
 
-  function watchMetric(id, icon, onValue) {
+  function watchMetric(id, glyph, onValue) {
     var node = $(id);
     if (!node || !window.MutationObserver) return null;
     var metric = node.closest ? node.closest('.metric') : null;
-    if (metric && !q('.ui-ico', metric)) metric.insertBefore(h('span', { class: 'ui-ico', 'aria-hidden': 'true', text: icon }), metric.firstChild);
+    if (metric && !q('.ui-ico', metric)) metric.insertBefore(h('span', { class: 'ui-ico', 'aria-hidden': 'true' }, ICONS[glyph] ? icon(glyph) : glyph), metric.firstChild);
     var st = { cur: null, target: null, raf: 0, txt: null, parts: null, flashT: 0, floatT: 0 };
-    var obs = new MutationObserver(function () {
-      var t = node.textContent;
-      if (t === st.txt) return;
-      handle(t);
-    });
+    // write() flushes its own records with takeRecords(), so every record the
+    // observer sees is a game update and carries the authoritative value.
+    var obs = new MutationObserver(function () { handle(node.textContent); });
     function write(t) { st.txt = t; node.textContent = t; obs.takeRecords(); }
     function render(v) { return st.parts.pre + fmtNum(v, st.parts.comma) + st.parts.suf; }
     function cancel() { if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0; } }
@@ -185,8 +188,8 @@
   }
   function setupMetrics() {
     cashApi = watchMetric('cash', '฿', function () { applyCashState(); });
-    watchMetric('pop', '⌂', null);
-    var ap = watchMetric('approval', '★', function (v) {
+    watchMetric('pop', 'house', null);
+    var ap = watchMetric('approval', 'star', function (v) {
       if (!ap || !ap.metric || v == null) return;
       ap.metric.classList.toggle('ui-danger', v <= 20);
       ap.metric.classList.toggle('ui-warn', v > 20 && v <= 35);
@@ -232,18 +235,16 @@
   }
 
   /* play / pause state */
-  function isPlaying() { var p = $('play'); return !!p && p.textContent.trim() !== '▶'; }
+  // The game sets aria-pressed on #play when the clock starts or stops.
+  function isPlaying() { var p = $('play'); return !!p && p.getAttribute('aria-pressed') === 'true'; }
   function syncPlay() {
-    var p = $('play'), hud = q('.hud');
-    if (!p) return;
-    var on = isPlaying();
-    if (hud) hud.classList.toggle('ui-playing', on);
-    p.setAttribute('aria-pressed', String(on));
+    var hud = q('.hud');
+    if (hud) hud.classList.toggle('ui-playing', isPlaying());
   }
   function watchPlay() {
     var p = $('play');
     if (!p || !window.MutationObserver) return;
-    new MutationObserver(syncPlay).observe(p, { childList: true, characterData: true, subtree: true });
+    new MutationObserver(syncPlay).observe(p, { attributes: true, attributeFilter: ['aria-pressed'] });
     syncPlay();
   }
 
@@ -297,7 +298,7 @@
   function makeDialog(id, title) {
     var d = h('dialog', { class: 'ui-dlg', id: id, 'aria-labelledby': id + '-t' });
     d.append(
-      h('button', { type: 'button', class: 'ui-close', 'aria-label': 'ปิด', text: '×', onclick: function () { d.close(); } }),
+      h('button', { type: 'button', class: 'ui-close', 'aria-label': 'ปิด', onclick: function () { d.close(); } }, icon('close')),
       h('h2', { id: id + '-t', text: title })
     );
     d.addEventListener('click', function (e) {
@@ -320,15 +321,15 @@
       h('span', null, h('span', { class: 'ui-lab', text: label }), h('span', { class: 'ui-sub', text: sub })),
       val, h('div', { class: 'ui-range-wrap' }, input));
     function paint() {
-      var p = Math.round(prefs[key] * 100);
+      var p = Math.round((audioSettings()[key] || 0) * 100);
       input.value = String(p); input.style.setProperty('--v', p + '%'); val.textContent = p + '%';
     }
     input.addEventListener('input', function () {
-      prefs[key] = Number(input.value) / 100; prefs.audioTouched = true; savePrefs(); applyAudio(); paint();
+      setAudio(key, Number(input.value) / 100); paint();
     });
     input.addEventListener('change', function () {
       if (key !== 'sfx') return;
-      try { var A = audio(); if (A && A.play) A.play('click'); } catch (e) { /* ignore */ }
+      try { var A = audio(); if (A && A.play) A.play('ui-click'); } catch (e) { /* ignore */ }
     });
     return { row: row, paint: paint };
   }
@@ -365,7 +366,6 @@
   }
   function openSettings() {
     if (anyDialogOpen()) return;
-    seedFromAudioStore();
     if (!settingsDlg) buildSettings();
     syncSettings();
     showDlg(settingsDlg);
@@ -373,7 +373,7 @@
 
   var SHORTCUTS = [
     [['Space'], 'เดินเวลา / หยุดเวลา'], [['N'], 'ถัดไป 1 เดือน'], [['R'], 'หมุนกล้อง'],
-    [['+', '−'], 'ซูมเข้า / ซูมออก'], [['H'], 'กลับกลางเมือง'], [['B'], 'เปิด / พับเมนูผังเมือง'],
+    [['+', '-'], 'ซูมเข้า / ซูมออก'], [['H'], 'กลับกลางเมือง'], [['B'], 'เปิด / พับเมนูผังเมือง'],
     [['1–9'], 'เลือกสิ่งก่อสร้างตามลำดับ'], [['X'], 'โหมดทุบ / ขาย'], [['G'], 'สภาเมือง'],
     [['P'], 'การเมือง'], [['M'], 'ปิด / เปิดเสียง'], [[','], 'ตั้งค่า'],
     [['?'], 'หน้าต่างนี้'], [['Esc'], 'ปิดหน้าต่าง / ยกเลิกเครื่องมือ']
@@ -412,9 +412,9 @@
   }
   function buildDock() {
     if (q('.ui-dock')) return;
-    muteBtn = h('button', { type: 'button', class: 'ui-fab', id: 'ui-mute', 'aria-label': 'เปิด/ปิดเสียง', title: 'เปิด/ปิดเสียง (M)', text: '♪', onclick: toggleMute });
-    var set = h('button', { type: 'button', class: 'ui-fab', id: 'ui-settings-btn', 'aria-label': 'ตั้งค่า', title: 'ตั้งค่า (,)', text: '⚙', onclick: openSettings });
-    var help = h('button', { type: 'button', class: 'ui-fab', id: 'ui-help-btn', 'aria-label': 'วิธีเล่นและทางลัด', title: 'ทางลัดคีย์บอร์ด (?)', text: '?', onclick: openHelp });
+    muteBtn = h('button', { type: 'button', class: 'ui-fab', id: 'ui-mute', 'aria-label': 'เปิด/ปิดเสียง', title: 'เปิด/ปิดเสียง (M)', onclick: toggleMute }, icon('music'));
+    var set = h('button', { type: 'button', class: 'ui-fab', id: 'ui-settings-btn', 'aria-label': 'ตั้งค่า', title: 'ตั้งค่า (,)', onclick: openSettings }, icon('gear'));
+    var help = h('button', { type: 'button', class: 'ui-fab', id: 'ui-help-btn', 'aria-label': 'วิธีเล่นและทางลัด', title: 'ทางลัดคีย์บอร์ด (?)', onclick: openHelp }, icon('help'));
     doc.body.append(h('div', { class: 'ui-dock' }, muteBtn, set, help));
     syncMute();
   }
@@ -423,12 +423,12 @@
   var tour = null;
   var STEPS = [
     { title: 'ยินดีต้อนรับสู่ปงยางคก', text: 'คุณคือผู้บริหารเมืองเล็ก ๆ ริมน้ำในล้านนา สร้างถนน บ้านเรือน ไร่นา และไฟฟ้าให้เมืองเติบโต แล้วนำผลงานไปขอเสียงจากประชาชนในการเลือกตั้ง', t: [] },
-    { title: 'เลือกสิ่งที่จะสร้าง', text: 'เปิดผังเมืองเลือกหมวดและสิ่งก่อสร้าง (บนมือถือแตะปุ่ม ☷ ก่อสร้าง) แล้วแตะแปลงว่างบนแผนที่ ถนนต้องต่อถึงทางเข้าเมืองด้านตะวันตก และอาคารส่วนใหญ่ต้องติดถนน', t: ['#panel'], f: ['#unfold'] },
+    { title: 'เลือกสิ่งที่จะสร้าง', text: 'เปิดผังเมืองเลือกหมวดและสิ่งก่อสร้าง (บนมือถือแตะปุ่ม “ก่อสร้าง”) แล้วแตะแปลงว่างบนแผนที่ ถนนต้องต่อถึงทางเข้าเมืองด้านตะวันตก และอาคารส่วนใหญ่ต้องติดถนน', t: ['#panel'], f: ['#unfold'] },
     { title: 'ดูแลคลังและความนิยม', text: 'เงินเทศบาล ประชากร และความนิยมแสดงอยู่ด้านบน ถ้าเงินใกล้หมดตัวเลขจะเป็นสีแดง ปรับภาษีและงบบริการได้ที่ปุ่ม “สภาเมือง”', t: ['#cash', '#pop', '#approval', '#gov'] },
-    { title: 'เดินเวลา', text: 'กด ▶ ให้เวลาเดินเอง หรือกด “ถัดไป 1 เดือน” ทีละเดือน เมื่อเวลาผ่านไปเมืองจะมีรายได้และรายจ่าย', t: ['.hud'] },
-    { title: 'มุมมองกล้อง', text: 'ลากแผนที่เพื่อเลื่อน เลื่อนล้อเมาส์หรือใช้ปุ่ม ＋ / − เพื่อซูม ⟳ หมุนกล้อง และ ⌖ พากลับกลางเมือง', t: ['.zoom'] },
+    { title: 'เดินเวลา', text: 'กดปุ่มเล่นให้เวลาเดินเอง หรือกด “ถัดไป 1 เดือน” ทีละเดือน เมื่อเวลาผ่านไปเมืองจะมีรายได้และรายจ่าย', t: ['.hud'] },
+    { title: 'มุมมองกล้อง', text: 'ลากแผนที่เพื่อเลื่อน เลื่อนล้อเมาส์หรือใช้ปุ่มมุมขวาล่างเพื่อซูมเข้า-ออก หมุนกล้อง และพากลับกลางเมือง', t: ['.zoom'] },
     { title: 'เสียงจากชุมชนและการเมือง', text: 'ติดตามข่าวชุมชนด้านล่าง และเปิดเมนู “การเมือง” เพื่อลงพื้นที่หาเสียง ก่อนวันเลือกตั้งผลงานและความนิยมจะตัดสินว่าคุณชนะหรือไม่', t: ['.news'] },
-    { title: 'พร้อมแล้ว!', text: 'กด ? เพื่อดูทางลัดคีย์บอร์ด หรือปุ่ม ⚙ เพื่อปรับเสียง เปิดคู่มือนี้ใหม่ได้ทุกเมื่อจากเมนูตั้งค่า', t: ['.ui-dock'] }
+    { title: 'พร้อมแล้ว!', text: 'กด ? เพื่อดูทางลัดคีย์บอร์ด หรือปุ่มรูปเฟืองเพื่อปรับเสียง เปิดคู่มือนี้ใหม่ได้ทุกเมื่อจากเมนูตั้งค่า', t: ['.ui-dock'] }
   ];
   function unionRect(sels) {
     var u = null;
@@ -549,12 +549,13 @@
   }
   function onKey(e) {
     if (e.key === 'Escape') {
-      if (tour) { e.preventDefault(); e.stopImmediatePropagation(); tour.close(); return; }
-      var d = openUiDialog();
-      if (d) { e.preventDefault(); e.stopImmediatePropagation(); d.close(); }
+      // Open <dialog>s handle Escape natively, which closes only the topmost one.
+      if (tour && !q('dialog[open]')) { e.preventDefault(); e.stopImmediatePropagation(); tour.close(); }
       return;
     }
     if (tour) {
+      // The tour is modal: keys never reach the map or game shortcuts.
+      e.stopImmediatePropagation();
       if (e.key === 'ArrowRight') { e.preventDefault(); tour.go(1); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); tour.go(-1); }
       else if (e.key === 'Tab') {
@@ -585,7 +586,8 @@
     switch (code) {
       case 'Space':
         if (e.repeat) { e.preventDefault(); return; }
-        if (t && t.closest && t.closest('#panel,.tools,dialog,.ui-dock,a')) return;
+        // A focused control keeps its native Space activation.
+        if (t && t !== doc.body && t.closest && t.closest('button,a,input,select,textarea,summary,[role=button],[role=switch],[tabindex],#panel,.tools,dialog,.ui-dock')) return;
         if (press('play')) { e.preventDefault(); swallowSpace = true; }
         return;
       case 'KeyN': if (!e.repeat && press('next')) e.preventDefault(); return;
@@ -627,8 +629,6 @@
     watchToast();
     watchPlay();
     buildDock();
-    seedFromAudioStore();
-    applyAudio();
     syncMute();
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('keyup', function (e) {
@@ -638,8 +638,7 @@
     if (window.ResizeObserver) {
       try { var ro = new ResizeObserver(layout); var hd = q('header'), hud = q('.hud'); if (hd) ro.observe(hd); if (hud) ro.observe(hud); } catch (e) { /* ignore */ }
     }
-    window.addEventListener('load', function () { layout(); applyAudio(); syncMute(); });
-    doc.addEventListener('pointerdown', function () { applyAudio(); syncMute(); }, { once: true, capture: true });
+    window.addEventListener('load', function () { layout(); syncMute(); });
     if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(layout).catch(function () {});
     if (!prefs.tutorial) setTimeout(function () { if (!prefs.tutorial && !q('dialog[open]')) openTour(); }, 700);
   }
