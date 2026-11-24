@@ -373,6 +373,13 @@ body kbd{display:inline-grid;place-items:center;min-width:28px;height:28px;paddi
   .ui-tour-card h3{font-size:19px}
   .ui-tour-card p{font-size:14.5px}
 }
+/* Narrow phones: the build tools (which grow when a tool is selected) get
+   their own row above the zoom group so the two never overlap. */
+@media(max-width:520px){
+  body .tools{bottom:134px;flex-wrap:wrap;right:8px;pointer-events:none}
+  body .tools button{pointer-events:auto}
+  body .panel{max-height:calc(100dvh - 290px)}
+}
 @media(max-width:380px){
   body header h1{font-size:15px}
   body .metric{padding:3px 6px}
