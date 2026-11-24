@@ -1416,8 +1416,9 @@ function resize(){
  viewW=innerWidth;viewH=innerHeight;
 }
 let lastFrame=0,lastDraw=0,frameFailed=false;
-function frame(now){
- rafId=0;
+// Keeps looping if a frame throws; sleeps only when frameStep reports idle.
+function frame(now){rafId=0;let keep=true;try{keep=frameStep(now)}finally{if(keep)wake()}}
+function frameStep(now){
  const dt=lastFrame?Math.min(.1,(now-lastFrame)/1000):0;lastFrame=now;
  let active=stepCamera(now);active=stepFling(dt)||active;
  if(updateEnv(dt))active=true;
@@ -1433,7 +1434,7 @@ function frame(now){
   catch(err){console.error('Render failed',err);if(scene)fallback();else if(!frameFailed)frameFailed=true}
  }
  // Sleep when fully idle; render() wakes the loop again.
- if(dirty||active||idle!==Infinity)wake();
+ return dirty||active||idle!==Infinity;
 }
 let scene=null;
 try{scene=createScene($('world3d'))}catch(err){console.warn('3D renderer unavailable',err)}
