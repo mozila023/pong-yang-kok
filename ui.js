@@ -36,7 +36,8 @@
 
   /* ---------------- preferences ---------------- */
   var KEY = 'pyk-ui';
-  var prefs = { music: 0.6, sfx: 0.8, muted: false, reduce: false, tutorial: false, audioTouched: false };
+  // Audio settings are owned by audio.js (GameAudio); only UI prefs live here.
+  var prefs = { reduce: false, tutorial: false };
   try {
     var stored = JSON.parse(localStorage.getItem(KEY));
     if (stored && typeof stored === 'object') for (var pk in prefs) if (pk in stored) prefs[pk] = stored[pk];
@@ -47,39 +48,28 @@
   root.classList.toggle('ui-reduce', !!prefs.reduce);
 
   /* ---------------- audio bridge ---------------- */
-  function applyAudio() {
+  // Fallback only used when audio.js is missing; mirrors the engine defaults.
+  var audioFallback = { music: 0.5, sfx: 0.7, muted: false };
+  function audioSettings() {
     var A = audio();
-    if (!A || !prefs.audioTouched) return false;
-    try {
-      if (A.setMusicVolume) A.setMusicVolume(prefs.music);
-      if (A.setSfxVolume) A.setSfxVolume(prefs.sfx);
-      if (A.mute) A.mute(!!prefs.muted);
-    } catch (e) { /* ignore */ }
-    return true;
+    try { if (A && typeof A.getSettings === 'function') return A.getSettings(); } catch (e) { /* ignore */ }
+    return audioFallback;
   }
-  function seedFromAudioStore() {
-    if (prefs.audioTouched) return;
-    try {
-      var a = JSON.parse(localStorage.getItem('pyk-audio'));
-      if (!a || typeof a !== 'object') return;
-      var pick = function () {
-        for (var i = 0; i < arguments.length; i++) if (typeof a[arguments[i]] === 'number') return Math.max(0, Math.min(1, a[arguments[i]]));
-        return null;
-      };
-      var m = pick('music', 'musicVolume', 'musicVol'), s = pick('sfx', 'sfxVolume', 'sfxVol');
-      if (m != null) prefs.music = m;
-      if (s != null) prefs.sfx = s;
-      if (typeof a.muted === 'boolean') prefs.muted = a.muted;
-    } catch (e) { /* ignore */ }
-  }
-  function curMuted() {
+  // Writes exactly one audio setting through the engine.
+  function setAudio(field, value) {
     var A = audio();
-    try { if (A && typeof A.isMuted === 'function') return !!A.isMuted(); } catch (e) { /* ignore */ }
-    return !!prefs.muted;
+    try {
+      if (A) {
+        if (field === 'music' && A.setMusicVolume) A.setMusicVolume(value);
+        else if (field === 'sfx' && A.setSfxVolume) A.setSfxVolume(value);
+        else if (field === 'muted' && A.mute) A.mute(!!value);
+        return;
+      }
+    } catch (e) { /* ignore */ }
+    audioFallback[field] = value;
   }
-  function setMuted(v) {
-    prefs.muted = !!v; prefs.audioTouched = true; savePrefs(); applyAudio(); syncMute();
-  }
+  function curMuted() { return !!audioSettings().muted; }
+  function setMuted(v) { setAudio('muted', !!v); syncMute(); }
   function toggleMute() { setMuted(!curMuted()); }
 
   /* ---------------- fonts (progressive enhancement) ---------------- */
@@ -128,11 +118,9 @@
     var metric = node.closest ? node.closest('.metric') : null;
     if (metric && !q('.ui-ico', metric)) metric.insertBefore(h('span', { class: 'ui-ico', 'aria-hidden': 'true', text: icon }), metric.firstChild);
     var st = { cur: null, target: null, raf: 0, txt: null, parts: null, flashT: 0, floatT: 0 };
-    var obs = new MutationObserver(function () {
-      var t = node.textContent;
-      if (t === st.txt) return;
-      handle(t);
-    });
+    // write() flushes its own records with takeRecords(), so every record the
+    // observer sees is a game update and carries the authoritative value.
+    var obs = new MutationObserver(function () { handle(node.textContent); });
     function write(t) { st.txt = t; node.textContent = t; obs.takeRecords(); }
     function render(v) { return st.parts.pre + fmtNum(v, st.parts.comma) + st.parts.suf; }
     function cancel() { if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0; } }
@@ -320,15 +308,15 @@
       h('span', null, h('span', { class: 'ui-lab', text: label }), h('span', { class: 'ui-sub', text: sub })),
       val, h('div', { class: 'ui-range-wrap' }, input));
     function paint() {
-      var p = Math.round(prefs[key] * 100);
+      var p = Math.round((audioSettings()[key] || 0) * 100);
       input.value = String(p); input.style.setProperty('--v', p + '%'); val.textContent = p + '%';
     }
     input.addEventListener('input', function () {
-      prefs[key] = Number(input.value) / 100; prefs.audioTouched = true; savePrefs(); applyAudio(); paint();
+      setAudio(key, Number(input.value) / 100); paint();
     });
     input.addEventListener('change', function () {
       if (key !== 'sfx') return;
-      try { var A = audio(); if (A && A.play) A.play('click'); } catch (e) { /* ignore */ }
+      try { var A = audio(); if (A && A.play) A.play('ui-click'); } catch (e) { /* ignore */ }
     });
     return { row: row, paint: paint };
   }
@@ -365,7 +353,6 @@
   }
   function openSettings() {
     if (anyDialogOpen()) return;
-    seedFromAudioStore();
     if (!settingsDlg) buildSettings();
     syncSettings();
     showDlg(settingsDlg);
@@ -549,12 +536,13 @@
   }
   function onKey(e) {
     if (e.key === 'Escape') {
-      if (tour) { e.preventDefault(); e.stopImmediatePropagation(); tour.close(); return; }
-      var d = openUiDialog();
-      if (d) { e.preventDefault(); e.stopImmediatePropagation(); d.close(); }
+      // Open <dialog>s handle Escape natively, which closes only the topmost one.
+      if (tour && !q('dialog[open]')) { e.preventDefault(); e.stopImmediatePropagation(); tour.close(); }
       return;
     }
     if (tour) {
+      // The tour is modal: keys never reach the map or game shortcuts.
+      e.stopImmediatePropagation();
       if (e.key === 'ArrowRight') { e.preventDefault(); tour.go(1); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); tour.go(-1); }
       else if (e.key === 'Tab') {
@@ -585,7 +573,8 @@
     switch (code) {
       case 'Space':
         if (e.repeat) { e.preventDefault(); return; }
-        if (t && t.closest && t.closest('#panel,.tools,dialog,.ui-dock,a')) return;
+        // A focused control keeps its native Space activation.
+        if (t && t !== doc.body && t.closest && t.closest('button,a,input,select,textarea,summary,[role=button],[role=switch],[tabindex],#panel,.tools,dialog,.ui-dock')) return;
         if (press('play')) { e.preventDefault(); swallowSpace = true; }
         return;
       case 'KeyN': if (!e.repeat && press('next')) e.preventDefault(); return;
@@ -627,8 +616,6 @@
     watchToast();
     watchPlay();
     buildDock();
-    seedFromAudioStore();
-    applyAudio();
     syncMute();
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('keyup', function (e) {
@@ -638,8 +625,7 @@
     if (window.ResizeObserver) {
       try { var ro = new ResizeObserver(layout); var hd = q('header'), hud = q('.hud'); if (hd) ro.observe(hd); if (hud) ro.observe(hud); } catch (e) { /* ignore */ }
     }
-    window.addEventListener('load', function () { layout(); applyAudio(); syncMute(); });
-    doc.addEventListener('pointerdown', function () { applyAudio(); syncMute(); }, { once: true, capture: true });
+    window.addEventListener('load', function () { layout(); syncMute(); });
     if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(layout).catch(function () {});
     if (!prefs.tutorial) setTimeout(function () { if (!prefs.tutorial && !q('dialog[open]')) openTour(); }, 700);
   }
