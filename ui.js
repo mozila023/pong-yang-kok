@@ -34,6 +34,21 @@
   function retrigger(n, cls) { n.classList.remove(cls); void n.offsetWidth; n.classList.add(cls); }
   function audio() { return window.GameAudio || null; }
 
+  /* Inline SVG icons (currentColor): symbol glyphs render as tofu in many fonts. */
+  var ICONS = {
+    "music": "<path d=\"M9 17.5V5.5l10-2v12\"/><circle cx=\"6.5\" cy=\"17.5\" r=\"2.5\"/><circle cx=\"16.5\" cy=\"15.5\" r=\"2.5\"/>",
+    "gear": "<circle cx=\"12\" cy=\"12\" r=\"6\"/><circle cx=\"12\" cy=\"12\" r=\"2.3\"/><path d=\"M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5M5.3 5.3l2.5 2.5M16.2 16.2l2.5 2.5M5.3 18.7l2.5-2.5M16.2 7.8l2.5-2.5\" stroke-width=\"2.6\"/>",
+    "help": "<path d=\"M9 9.2a3 3 0 1 1 4.2 2.75c-.8.35-1.2 1-1.2 1.85V15\"/><circle cx=\"12\" cy=\"18.5\" r=\"1.2\" fill=\"currentColor\" stroke=\"none\"/>",
+    "close": "<path d=\"M6.5 6.5l11 11M17.5 6.5l-11 11\"/>",
+    "house": "<path d=\"M4 11.5L12 4.5l8 7\"/><path d=\"M6.5 9.5v10h11v-10\"/><path d=\"M10 19.5v-5h4v5\"/>",
+    "star": "<path d=\"M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z\" fill=\"currentColor\" stroke=\"none\"/>"
+  };
+  function icon(name) {
+    var s = h('span', { class: 'ui-svg', 'aria-hidden': 'true' });
+    s.innerHTML = '<svg class="ico" viewBox="0 0 24 24" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICONS[name] + '</svg>';
+    return s;
+  }
+
   /* ---------------- preferences ---------------- */
   var KEY = 'pyk-ui';
   // Audio settings are owned by audio.js (GameAudio); only UI prefs live here.
@@ -91,7 +106,7 @@
   }
 
   /* ---------------- tooltips ---------------- */
-  var TIPS = { play: 'เดินเวลา / หยุด (Space)', next: 'ข้ามไป 1 เดือน (N)', rotate: 'หมุนกล้อง (R)', minus: 'ซูมออก (−)',
+  var TIPS = { play: 'เดินเวลา / หยุด (Space)', next: 'ข้ามไป 1 เดือน (N)', rotate: 'หมุนกล้อง (R)', minus: 'ซูมออก (-)',
     plus: 'ซูมเข้า (+)', home: 'กลับกลางเมือง (H)', gov: 'สภาเมือง (G)', political: 'การเมือง (P)',
     sellTool: 'ทุบ / ขาย (X)', fold: 'พับเมนู (B)', unfold: 'เปิดเมนูก่อสร้าง (B)' };
   function addTips() {
@@ -112,11 +127,11 @@
   }
   function fmtNum(v, comma) { v = Math.round(v); return comma ? v.toLocaleString('th-TH') : String(v); }
 
-  function watchMetric(id, icon, onValue) {
+  function watchMetric(id, glyph, onValue) {
     var node = $(id);
     if (!node || !window.MutationObserver) return null;
     var metric = node.closest ? node.closest('.metric') : null;
-    if (metric && !q('.ui-ico', metric)) metric.insertBefore(h('span', { class: 'ui-ico', 'aria-hidden': 'true', text: icon }), metric.firstChild);
+    if (metric && !q('.ui-ico', metric)) metric.insertBefore(h('span', { class: 'ui-ico', 'aria-hidden': 'true' }, ICONS[glyph] ? icon(glyph) : glyph), metric.firstChild);
     var st = { cur: null, target: null, raf: 0, txt: null, parts: null, flashT: 0, floatT: 0 };
     // write() flushes its own records with takeRecords(), so every record the
     // observer sees is a game update and carries the authoritative value.
@@ -173,8 +188,8 @@
   }
   function setupMetrics() {
     cashApi = watchMetric('cash', '฿', function () { applyCashState(); });
-    watchMetric('pop', '⌂', null);
-    var ap = watchMetric('approval', '★', function (v) {
+    watchMetric('pop', 'house', null);
+    var ap = watchMetric('approval', 'star', function (v) {
       if (!ap || !ap.metric || v == null) return;
       ap.metric.classList.toggle('ui-danger', v <= 20);
       ap.metric.classList.toggle('ui-warn', v > 20 && v <= 35);
@@ -220,18 +235,16 @@
   }
 
   /* play / pause state */
-  function isPlaying() { var p = $('play'); return !!p && p.textContent.trim() !== '▶'; }
+  // The game sets aria-pressed on #play when the clock starts or stops.
+  function isPlaying() { var p = $('play'); return !!p && p.getAttribute('aria-pressed') === 'true'; }
   function syncPlay() {
-    var p = $('play'), hud = q('.hud');
-    if (!p) return;
-    var on = isPlaying();
-    if (hud) hud.classList.toggle('ui-playing', on);
-    p.setAttribute('aria-pressed', String(on));
+    var hud = q('.hud');
+    if (hud) hud.classList.toggle('ui-playing', isPlaying());
   }
   function watchPlay() {
     var p = $('play');
     if (!p || !window.MutationObserver) return;
-    new MutationObserver(syncPlay).observe(p, { childList: true, characterData: true, subtree: true });
+    new MutationObserver(syncPlay).observe(p, { attributes: true, attributeFilter: ['aria-pressed'] });
     syncPlay();
   }
 
@@ -285,7 +298,7 @@
   function makeDialog(id, title) {
     var d = h('dialog', { class: 'ui-dlg', id: id, 'aria-labelledby': id + '-t' });
     d.append(
-      h('button', { type: 'button', class: 'ui-close', 'aria-label': 'ปิด', text: '×', onclick: function () { d.close(); } }),
+      h('button', { type: 'button', class: 'ui-close', 'aria-label': 'ปิด', onclick: function () { d.close(); } }, icon('close')),
       h('h2', { id: id + '-t', text: title })
     );
     d.addEventListener('click', function (e) {
@@ -360,7 +373,7 @@
 
   var SHORTCUTS = [
     [['Space'], 'เดินเวลา / หยุดเวลา'], [['N'], 'ถัดไป 1 เดือน'], [['R'], 'หมุนกล้อง'],
-    [['+', '−'], 'ซูมเข้า / ซูมออก'], [['H'], 'กลับกลางเมือง'], [['B'], 'เปิด / พับเมนูผังเมือง'],
+    [['+', '-'], 'ซูมเข้า / ซูมออก'], [['H'], 'กลับกลางเมือง'], [['B'], 'เปิด / พับเมนูผังเมือง'],
     [['1–9'], 'เลือกสิ่งก่อสร้างตามลำดับ'], [['X'], 'โหมดทุบ / ขาย'], [['G'], 'สภาเมือง'],
     [['P'], 'การเมือง'], [['M'], 'ปิด / เปิดเสียง'], [[','], 'ตั้งค่า'],
     [['?'], 'หน้าต่างนี้'], [['Esc'], 'ปิดหน้าต่าง / ยกเลิกเครื่องมือ']
@@ -399,9 +412,9 @@
   }
   function buildDock() {
     if (q('.ui-dock')) return;
-    muteBtn = h('button', { type: 'button', class: 'ui-fab', id: 'ui-mute', 'aria-label': 'เปิด/ปิดเสียง', title: 'เปิด/ปิดเสียง (M)', text: '♪', onclick: toggleMute });
-    var set = h('button', { type: 'button', class: 'ui-fab', id: 'ui-settings-btn', 'aria-label': 'ตั้งค่า', title: 'ตั้งค่า (,)', text: '⚙', onclick: openSettings });
-    var help = h('button', { type: 'button', class: 'ui-fab', id: 'ui-help-btn', 'aria-label': 'วิธีเล่นและทางลัด', title: 'ทางลัดคีย์บอร์ด (?)', text: '?', onclick: openHelp });
+    muteBtn = h('button', { type: 'button', class: 'ui-fab', id: 'ui-mute', 'aria-label': 'เปิด/ปิดเสียง', title: 'เปิด/ปิดเสียง (M)', onclick: toggleMute }, icon('music'));
+    var set = h('button', { type: 'button', class: 'ui-fab', id: 'ui-settings-btn', 'aria-label': 'ตั้งค่า', title: 'ตั้งค่า (,)', onclick: openSettings }, icon('gear'));
+    var help = h('button', { type: 'button', class: 'ui-fab', id: 'ui-help-btn', 'aria-label': 'วิธีเล่นและทางลัด', title: 'ทางลัดคีย์บอร์ด (?)', onclick: openHelp }, icon('help'));
     doc.body.append(h('div', { class: 'ui-dock' }, muteBtn, set, help));
     syncMute();
   }
@@ -410,12 +423,12 @@
   var tour = null;
   var STEPS = [
     { title: 'ยินดีต้อนรับสู่ปงยางคก', text: 'คุณคือผู้บริหารเมืองเล็ก ๆ ริมน้ำในล้านนา สร้างถนน บ้านเรือน ไร่นา และไฟฟ้าให้เมืองเติบโต แล้วนำผลงานไปขอเสียงจากประชาชนในการเลือกตั้ง', t: [] },
-    { title: 'เลือกสิ่งที่จะสร้าง', text: 'เปิดผังเมืองเลือกหมวดและสิ่งก่อสร้าง (บนมือถือแตะปุ่ม ☷ ก่อสร้าง) แล้วแตะแปลงว่างบนแผนที่ ถนนต้องต่อถึงทางเข้าเมืองด้านตะวันตก และอาคารส่วนใหญ่ต้องติดถนน', t: ['#panel'], f: ['#unfold'] },
+    { title: 'เลือกสิ่งที่จะสร้าง', text: 'เปิดผังเมืองเลือกหมวดและสิ่งก่อสร้าง (บนมือถือแตะปุ่ม “ก่อสร้าง”) แล้วแตะแปลงว่างบนแผนที่ ถนนต้องต่อถึงทางเข้าเมืองด้านตะวันตก และอาคารส่วนใหญ่ต้องติดถนน', t: ['#panel'], f: ['#unfold'] },
     { title: 'ดูแลคลังและความนิยม', text: 'เงินเทศบาล ประชากร และความนิยมแสดงอยู่ด้านบน ถ้าเงินใกล้หมดตัวเลขจะเป็นสีแดง ปรับภาษีและงบบริการได้ที่ปุ่ม “สภาเมือง”', t: ['#cash', '#pop', '#approval', '#gov'] },
-    { title: 'เดินเวลา', text: 'กด ▶ ให้เวลาเดินเอง หรือกด “ถัดไป 1 เดือน” ทีละเดือน เมื่อเวลาผ่านไปเมืองจะมีรายได้และรายจ่าย', t: ['.hud'] },
-    { title: 'มุมมองกล้อง', text: 'ลากแผนที่เพื่อเลื่อน เลื่อนล้อเมาส์หรือใช้ปุ่ม ＋ / − เพื่อซูม ⟳ หมุนกล้อง และ ⌖ พากลับกลางเมือง', t: ['.zoom'] },
+    { title: 'เดินเวลา', text: 'กดปุ่มเล่นให้เวลาเดินเอง หรือกด “ถัดไป 1 เดือน” ทีละเดือน เมื่อเวลาผ่านไปเมืองจะมีรายได้และรายจ่าย', t: ['.hud'] },
+    { title: 'มุมมองกล้อง', text: 'ลากแผนที่เพื่อเลื่อน เลื่อนล้อเมาส์หรือใช้ปุ่มมุมขวาล่างเพื่อซูมเข้า-ออก หมุนกล้อง และพากลับกลางเมือง', t: ['.zoom'] },
     { title: 'เสียงจากชุมชนและการเมือง', text: 'ติดตามข่าวชุมชนด้านล่าง และเปิดเมนู “การเมือง” เพื่อลงพื้นที่หาเสียง ก่อนวันเลือกตั้งผลงานและความนิยมจะตัดสินว่าคุณชนะหรือไม่', t: ['.news'] },
-    { title: 'พร้อมแล้ว!', text: 'กด ? เพื่อดูทางลัดคีย์บอร์ด หรือปุ่ม ⚙ เพื่อปรับเสียง เปิดคู่มือนี้ใหม่ได้ทุกเมื่อจากเมนูตั้งค่า', t: ['.ui-dock'] }
+    { title: 'พร้อมแล้ว!', text: 'กด ? เพื่อดูทางลัดคีย์บอร์ด หรือปุ่มรูปเฟืองเพื่อปรับเสียง เปิดคู่มือนี้ใหม่ได้ทุกเมื่อจากเมนูตั้งค่า', t: ['.ui-dock'] }
   ];
   function unionRect(sels) {
     var u = null;
