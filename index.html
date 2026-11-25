@@ -187,6 +187,9 @@ function drawAsset(ctx, id, x, y, s = 1, seed = 0, orientation=0, mesh=null) {
           light.addColorStop(0,'rgba(255,236,191,.23)');light.addColorStop(.64,'rgba(251,232,203,0)');light.addColorStop(1,'rgba(40,43,48,.17)');ctx.fillStyle=light;ctx.fill()}
       }
     }
+    if(!stroke && fill?.startsWith('#') && points.length >= 3) {
+      ctx.strokeStyle='#624855'; ctx.lineWidth=.55; ctx.stroke();
+    }
     if(stroke) { ctx.strokeStyle=stroke; ctx.lineWidth=width; ctx.stroke(); }
   }
   const face = (points, fill, stroke, width) => mesh?mesh.face(points,fill,stroke,width):shape(points.map(p),fill,stroke,width);
@@ -206,32 +209,33 @@ function drawAsset(ctx, id, x, y, s = 1, seed = 0, orientation=0, mesh=null) {
     face([[sideU,v,z],[sideU,b,z],[sideU,b,t],[sideU,v,t]],sideU===a?dark:lit);
     slab(u,v,w,d,t,top);
   }
-  const plaster=['#f6ebcc','#e1cd9f','#aa9676'];
-  const wood=['#b48554','#99643e','#664633'];
-  const white=['#fff4df','#e8dfc9','#acae9f'];
+  const plaster=['#f6ebcc','#e1cd9f','#c59f92'];
+  const wood=['#b48554','#bd865f','#945f51'];
+  const white=['#fff4df','#e8dfc9','#b6adbb'];
   const concrete=['#c9c9ac','#acae94','#878e7e'];
   const dark=['#71868a','#546c70','#364c54'];
   const waterGlass=['#90bdc1','#668e97','#426c79'];
   const cast=(u,v,w,d,h) => face([[u,v],[u+w,v],[u+w+h*.43,v+h*.18],[u+w+h*.43,v+d+h*.18],[u+h*.43,v+d+h*.18],[u,v+d]],'rgba(40,52,39,.18)');
   function roof(u,v,w,d,z,rise,c) {
+    u-=1; v-=1; w+=2; d+=2; rise*=1.16;
     const mid=v+d/2, a=u+w,b=v+d;
     const near=orientation===0||orientation===3?b:v,far=near===b?v:b,end=orientation<2?a:u;
     if(mesh)face([[u,v,z],[u,b,z],[u,mid,z+rise]],c[2]);
     face([[end,v,z],[end,b,z],[end,mid,z+rise]],c[2]);
     face([[u,far,z],[a,far,z],[a,mid,z+rise],[u,mid,z+rise]],c[2]);
     face([[u,mid,z+rise],[a,mid,z+rise],[a,near,z],[u,near,z]],c[0]);
-    for(let i=2;i<w;i+=1.7) line([u+i,mid,z+rise],[u+i,near,z],c[1],.45);
+    for(let i=2;i<w;i+=4.5) line([u+i,mid,z+rise],[u+i,near,z],c[1],.45);
     line([u,mid,z+rise],[a,mid,z+rise],c[3],1.3);
     line([u,near,z],[a,near,z],c[3],.9);
     line([end,near,z],[end,mid,z+rise],c[3],.85);
   }
-  const tile=['#b85939','#89422e','#863e2e','#d99b64'];
-  const teal=['#588c80','#3f7067','#345e5d','#a2b79c'];
+  const tile=['#ed887d','#df776d','#bd646b','#ffcf96'];
+  const teal=['#73c5bc','#62aca8','#528d96','#c4ead0'];
   function windowRow(u,v,w,d,z,count,height) {
     const fv=orientation===0||orientation===3?v+d:v,fu=orientation<2?u+w:u;
     for(let i=0;i<count;i++) {
       const a=u+1.7+i*(w-2)/count, dw=(w-2)/count*.67;
-      face([[a,fv,z],[a+dw,fv,z],[a+dw,fv,z+height],[a,fv,z+height]],'#4e7277');
+      face([[a,fv,z],[a+dw,fv,z],[a+dw,fv,z+height],[a,fv,z+height]],'#597d91');
       line([a+.3,fv,z+height-.5],[a+dw-.4,fv,z+height-.5],'#a6c6bc',.62);
       line([a+dw*.54,fv,z],[a+dw*.54,fv,z+height],'#b9b7a1',.55);
     }
@@ -242,23 +246,16 @@ function drawAsset(ctx, id, x, y, s = 1, seed = 0, orientation=0, mesh=null) {
   }
   function crown(u,v,h,r,fruit=false) {
     const [cx,cy]=p([u,v,h]);
-    const palettes = [
-      ['#355943','#427553','#578b55','#79a361','#a5ba73'],
-      ['#3e6244','#527c4b','#739958','#95af64','#bdc47c'],
-      ['#355f56','#437d63','#5b9168','#81a972','#a2bd82']
-    ];
-    const col=palettes[Math.floor(random()*palettes.length)];
-    line([u,v,0],[u,v,h+1],'#715a3d',r*.22);
-    line([u,v,h*.47],[u-r*.45,v,h*.79],'#715a3d',r*.13);
-    for(let k=0;k<58;k++){
-      const angle=random()*Math.PI*2,rad=Math.sqrt(random()),dx=Math.cos(angle)*rad,dy=Math.sin(angle)*rad;
-      const leaf=r*(.12+.20*random()),light=Math.max(0,Math.min(4,Math.floor(1.8-dx-dy+random()*1.5)));
-      oval(cx+dx*r*.89,cy+dy*r*.83,leaf,leaf*(.65+random()*.35),col[light]);
+    const pink=!fruit && seed%4===3;
+    const col=pink?['#ac748c','#ed9cb3','#ffd0d3']:['#517e72','#82bd89','#c0dc99'];
+    line([u,v,0],[u,v,h],'#8e6659',r*.32);
+    for(const [dx,dy,size] of [[-.48,.06,.56],[.43,.05,.57],[0,-.35,.68],[0,.24,.66]]){
+      oval(cx+dx*r,cy+dy*r,r*size,r*size*.91,col[0]);
+      oval(cx+dx*r,cy+(dy-.065)*r,r*size*.94,r*size*.82,col[1]);
     }
-    for(let k=0;k<8;k++) {
-      const a=random()*Math.PI*2, q=random()*.77;
-      const dx=cx+Math.cos(a)*r*q,dy=cy+Math.sin(a)*r*.67*q;
-      oval(dx,dy,r*(fruit?.11:.14),r*.095,fruit&&k%2===0?'#e4a450':k%2?col[3]:col[4]);
+    oval(cx-r*.24,cy-r*.64,r*.24,r*.11,col[2]);
+    for(const [dx,dy] of [[-.52,.04],[.46,.12],[-.1,.31]]){
+      oval(cx+r*dx,cy+r*dy,r*.13,r*.12,fruit?'#f7aa65':col[2]);
     }
   }
   function tree(u,v,h,r,fruit=false) {
@@ -464,13 +461,13 @@ function makeLandscape(){
    const i=x/step-12.5,river=3.3+Math.sin(i*.28)*1.45+i*.12;
    const bank=Math.abs(j-river),edge=Math.min(1,Math.max(0,(bank-.94)/.25));
    const noise=((Math.imul(x+31,y+107)^Math.imul(x,347)^Math.imul(y,181))&63)/63-.5;
-   const meadow=6*Math.sin(i*1.72+Math.sin(j))+5*Math.cos(j*.86+i*.49)+3*Math.sin(x*.11+y*.21)+noise*11;
+   const meadow=6*Math.sin(i*1.72+Math.sin(j))+5*Math.cos(j*.86+i*.49)+3*Math.sin(x*.11+y*.21)+noise*2;
    const sand=Math.max(0,1-Math.abs(bank-1.26)/.62),deep=Math.min(1,bank);
    const ripple=3.5*Math.sin(i*38+j*23+2*Math.sin(j*4));
    const a=(y*size+x)*4;
-   pixels.data[a]=(38+37*deep+ripple)*(1-edge)+(132+meadow+60*sand)*edge;
-   pixels.data[a+1]=(113+37*deep+ripple)*(1-edge)+(161+meadow+15*sand)*edge;
-   pixels.data[a+2]=(122+17*deep+ripple)*(1-edge)+(89+meadow+35*sand)*edge;
+   pixels.data[a]=(80+43*deep+ripple)*(1-edge)+(165+meadow+55*sand)*edge;
+   pixels.data[a+1]=(169+26*deep+ripple)*(1-edge)+(201+meadow+9*sand)*edge;
+   pixels.data[a+2]=(183+23*deep+ripple)*(1-edge)+(139+meadow+29*sand)*edge;
    pixels.data[a+3]=255;
   }
  }
@@ -560,34 +557,47 @@ function paintCars2D(){
  }
 }
 
-// Source cells are trimmed and packed with transparent gutters at build time.
-const photoNames=['wood','modern','row','condo','temple','market','school','clinic','tree','palm','park','livestock','cane','cassava','soy','pineapple','orchard','veg','shop','mall','coal','gold','plant','bankPlants'];
-const photoWidths=[72,74,81,80,91,78,73,67,64,48,78,77,79,78,77,78,79,79,70,81,80,79,82,40];
-const photoRects=[[6,11,308,297],[326,25,308,270],[646,16,308,287],[967,6,305,308],[6,334,308,291],[326,334,308,291],[646,359,308,242],[966,368,308,223],[6,656,308,288],[326,655,308,290],[646,664,308,272],[966,673,308,254],[6,981,308,277],[326,990,308,259],[646,991,308,258],[966,987,308,265],[6,1301,308,278],[326,1300,308,279],[646,1299,308,282],[966,1306,308,268],[6,1607,308,306],[326,1611,308,298],[646,1609,308,302],[966,1606,308,308]];
+// Bake the illustrated pieces once. Both renderers use the same tile origin.
 let photoImage=null;
+const illustratedPieces=new Map();
 function photoFor(id,seed){
- if(!photoImage)return null;
- if(id==='tree'&&seed%4===1)id='palm';
- if(id==='copper'||id==='silver')id='gold';
- const n=photoNames.indexOf(id);if(n<0)return null;
- const [x,y,w,h]=photoRects[n],width=photoWidths[n]*(id==='tree'||id==='palm'?.92+.055*(seed%4):1);
- const field=n>=12&&n<=17;
- const size=width*(field?.88:.86);
- const fraction=[.20,.19,.18,.19,.19,.20,.19,.18,.038,.065,.21,.24,.24,.24,.24,.24,.24,.24,.20,.21,.23,.23,.21,.18][n];
- return {x,y,w,h,width:size,height:size*h/w*(field?.74:1),foot:size*fraction};
+ const pieces=illustratedPieces.get(id);
+ return pieces?.[Math.abs(Math.floor(seed))%pieces.length];
 }
-// CORS-enabled loading keeps the images usable as WebGL textures. When that
-// fails (for example index.html opened straight from disk) retry without CORS
-// so the 2D thumbnails still work; the 3D view then uses modelled buildings.
-function loadImage(src,done){
- const im=new Image();im.crossOrigin='anonymous';im.onload=()=>done(im);
- im.onerror=()=>{const plain=new Image();plain.onload=()=>done(plain);plain.onerror=()=>console.warn('Image unavailable',src);plain.src=src};
- im.src=src;
+function drawNeighbor(g,x,y,shirt){
+ g.save();g.translate(x,y);
+ function oval(x,y,w,h,color){
+  g.beginPath();g.ellipse(x,y,w,h,0,0,2*Math.PI);g.fillStyle=color;g.fill();
+ }
+ oval(0,0,4,1.15,'rgba(73,55,72,.18)');
+ oval(-1.45,-1,1.1,1.45,'#664959');oval(1.45,-1,1.1,1.45,'#664959');
+ oval(0,-3.5,2.9,3.25,shirt);
+ oval(0,-8.3,4.6,4.4,'#664651');oval(0,-7.8,4.15,3.65,'#ffcfaa');
+ oval(-1.4,-10.6,2.5,1.2,'#664651');
+ for(const side of [-1,1]){
+  oval(side*1.6,-8,.57,.85,'#453747');oval(side*2.75,-6.9,.8,.46,'#f59994');
+ }
+ oval(0,-6.1,.64,.32,'#b56969');g.restore();
 }
-function loadPhotos(){
- if(typeof Image==='undefined')return;
- loadImage('village.webp',im=>{photoImage=im;list();render()});
- loadImage('meadow.webp',grass=>{try{applyMeadow(grass)}catch(err){console.warn('Meadow texture unavailable',err)}render()});
+function bakeIllustrations(){
+ const names=['wood','modern','row','condo','temple','market','school','clinic','tree','park','livestock','cane','cassava','soy','pineapple','orchard','veg','shop','mall','coal','gold','silver','copper','plant','bankPlants'];
+ const neighbors={wood:'#ec8585',modern:'#67acae',school:'#7497c2',market:'#ed9863',shop:'#a386bd',park:'#edb459'};
+ const cell=192,cols=8,atlas=document.createElement('canvas');
+ atlas.width=cols*cell;atlas.height=4*cell;
+ const g=atlas.getContext('2d');let slot=0;
+ for(const id of names){
+  const pieces=[];illustratedPieces.set(id,pieces);
+  const count=id==='tree'?4:id==='wood'?2:1;
+  for(let variant=0;variant<count;variant++,slot++){
+   const x=(slot%cols)*cell,y=Math.floor(slot/cols)*cell;
+   g.save();g.translate(x+96,y+140);g.scale(2,2);
+   drawAsset(g,id,0,0,1,variant);
+   if(neighbors[id])drawNeighbor(g,-6,15,neighbors[id]);
+   g.restore();
+   pieces.push({x,y,w:cell,h:cell,width:96,height:96,foot:26});
+  }
+ }
+ photoImage=atlas;list();render();
 }
 
 // Static meshes share one vertex buffer. Camera movement and the sunlight pass
@@ -752,7 +762,7 @@ function createScene(surface){
   }
   if(key(i,j)===ENTRANCE){
    // Lanna-style town gate marks the entrance that the road network starts from.
-   const post=['#efe2c2','#dccca6','#b9a880'],roof=['#b85939','#89422e','#863e2e'];
+   const post=['#efe2c2','#dccca6','#b9a880'],roof=['#ed887d','#df776d','#bd646b'];
    for(const v of [-13,11])box(-1,v,2,2,.3,15,post);
    box(-2,-14.5,4,29,15,2,roof);box(-1,-12,2,24,17,2.2,['#d9a54e','#c08a3a','#a5762f']);
   }
@@ -1444,7 +1454,7 @@ motionQuery.addEventListener?.('change',syncMotion);new MutationObserver(syncMot
 // Small hook for ui.js settings (all optional).
 window.PYKGraphics={setDayNight(on){env.dayNight=!!on;render()},isDayNight:()=>env.dayNight,hour:()=>env.hour,reducedMotion:()=>reduceMotion};
 addEventListener('resize',resize);$('speed').textContent=SPEED_LABELS[city.speed||0];list();fold(innerWidth<720);resize();refresh();
-loadPhotos();wake();
+bakeIllustrations();wake();
 
 </script>
 <script src="audio.js"></script><script src="ui.js"></script>
