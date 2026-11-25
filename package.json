@@ -1,0 +1,12 @@
+{
+  "name": "pong-yang-kok",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ปงยางคก — browser city-builder and local politics sim (no build step)",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
