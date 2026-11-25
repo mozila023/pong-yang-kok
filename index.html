@@ -6,7 +6,7 @@ canvas#map{width:100vw;height:100dvh;display:block;touch-action:none;cursor:grab
 </style>
 <canvas id="world3d" style="position:fixed;inset:0;width:100vw;height:100dvh;pointer-events:none" aria-hidden="true"></canvas><canvas id="map" style="position:relative" aria-label="แผนที่เมืองปงยางคก"></canvas><canvas id="fx" aria-hidden="true"></canvas><div id="vignette" aria-hidden="true"></div>
 <header><div class="brand"><div class="stamp" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l2.6 6.9 6.9 2.6-6.9 2.6-2.6 6.9-2.6-6.9L2.5 12l6.9-2.6z" fill="currentColor" stroke="none"/></svg></div><div><h1>ปงยางคก</h1><small>เมืองของเรา · ลำปาง</small></div></div><div class="metric"><small>เงินเทศบาล</small><b id="cash"></b></div><div class="metric"><small>ประชากร</small><b id="pop"></b></div><div class="metric"><small>ความนิยม</small><b id="approval"></b></div><button id="gov">สภาเมือง</button></header>
-<aside class="panel" id="panel"><button class="close" id="fold" aria-label="พับเมนู"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button><h2>ผังเมือง</h2><select id="group" aria-label="หมวดสิ่งปลูกสร้าง"></select><div class="items" id="items"></div><footer id="hint">เลือกสิ่งก่อสร้าง แล้วแตะแปลงว่างติดถนน</footer></aside><button class="switch" id="unfold"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>ก่อสร้าง</button>
+<aside class="panel" id="panel"><button class="close" id="fold" aria-label="พับเมนู"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button><h2>ผังเมือง</h2><select id="group" aria-label="หมวดสิ่งปลูกสร้าง"></select><section id="planning"><b>ความต้องการพัฒนา</b><div id="rci"></div><small id="balance"></small></section><div class="items" id="items"></div><footer id="hint">เลือกสิ่งก่อสร้าง แล้วแตะแปลงว่างติดถนน</footer></aside><button class="switch" id="unfold"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>ก่อสร้าง</button>
 <div class="hud"><span id="date"></span><button id="play" aria-label="เดินเวลาหรือหยุด" aria-pressed="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></button><button id="speed" aria-label="ความเร็วเวลา">1×</button><button id="next">ถัดไป 1 เดือน</button></div>
 <div class="zoom"><button id="rotate" aria-label="หมุนกล้อง 90 องศา"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.35-5.65"/><path d="M20 4v5h-5"/></svg></button><button id="minus" aria-label="ซูมออก"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></button><button id="home" aria-label="กลับกลางเมือง"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6.5"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></button><button id="plus" aria-label="ซูมเข้า"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
 <div class="news"><b>เสียงจากชุมชน</b><span id="news"></span><button id="political">การเมือง</button></div><div class="toast hide" id="toast" role="status"></div><dialog id="modal" aria-labelledby="modalTitle"><button class="dismiss" id="dismiss">ปิด</button><div id="detail"></div></dialog>
@@ -22,24 +22,33 @@ canvas#map{width:100vw;height:100dvh;display:block;touch-action:none;cursor:grab
 html.ui-reduce .toast:not(.hide){animation:none}html.ui-reduce .item{transition:none}
 </style>
 <link rel="stylesheet" href="ui.css">
-<div class="tools"><button id="sellTool" aria-pressed="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5l7 7-2.6 2.6-7-7z"/><path d="M12.3 8.2L3.8 16.7a1.9 1.9 0 0 0 2.7 2.7l8.5-8.5"/></svg>ทุบ / ขาย</button><button id="neutral" hidden>เมาส์เปล่า · Esc</button></div>
+<style>
+#cityDock{position:fixed;z-index:3;bottom:76px;left:50%;transform:translateX(-50%);display:flex;max-width:calc(100vw - 395px);background:#18333d;color:#f3f8f2;border:1px solid #638087;border-radius:12px;padding:4px;box-shadow:0 4px 16px #122f3547}
+#buildTabs{display:flex;overflow-x:auto;scrollbar-width:thin}#cityDock button{white-space:nowrap;background:transparent;color:inherit;padding:9px 10px;border-radius:7px;font-size:13px}#cityDock button[aria-pressed=true]{background:#b6e3bd;color:#143833}#cityDock #layer{border-left:1px solid #628083;color:#c3e9ed}
+#planning{margin:8px 0;padding:10px;background:#18333d;color:#ebf7ed;border-radius:9px;font-size:13px}#planning small{color:#d4e6db}#rci{display:grid;gap:2px;margin:.35em 0}#rci div{display:grid;grid-template-columns:26px 1fr 34px;align-items:center;gap:5px}#rci meter{width:100%;height:11px}#rci meter::-webkit-meter-optimum-value{background:#77c79b}#rci div:nth-child(2) meter::-webkit-meter-optimum-value{background:#79bcdf}#rci div:nth-child(3) meter::-webkit-meter-optimum-value{background:#edc675}
+@media(max-width:1000px){#cityDock{bottom:8px;left:8px;right:8px;transform:none;max-width:none}#buildTabs{flex:1}body .news{bottom:59px}body .zoom,body .tools{bottom:126px}body .panel{max-height:calc(100dvh - 270px)}}
+@media(max-width:480px){body .tools{bottom:177px}#cityDock button{font-size:12px;padding:8px}body .panel{max-height:calc(100dvh - 302px)}}
+</style>
+<nav id="cityDock" aria-label="เครื่องมือผังเมือง"><div id="buildTabs"></div><button id="layer" type="button">ชั้นข้อมูล</button></nav><div class="tools"><button id="sellTool" aria-pressed="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5l7 7-2.6 2.6-7-7z"/><path d="M12.3 8.2L3.8 16.7a1.9 1.9 0 0 0 2.7 2.7l8.5-8.5"/></svg>ทุบ / ขาย</button><button id="neutral" hidden>เมาส์เปล่า · Esc</button></div>
 <dialog id="sale" aria-labelledby="saleTitle"><h2 id="saleTitle"></h2><p id="saleAmount"></p><div class="act"><button id="keep" autofocus>เก็บไว้</button><button class="primary" id="sellNow">ยืนยันขาย</button></div></dialog>
 <dialog id="election" aria-labelledby="electionTitle"><h2 id="electionTitle"></h2><div id="electionBody"></div><div class="act"><button class="primary" id="electionOk" autofocus>ตกลง</button></div></dialog>
 <script>
 const GROUPS={
-  'ที่อยู่อาศัย':[['wood','บ้านไม้ยกพื้น',800,12],['modern','บ้านปูนโมเดิร์น',1400,20],['row','ตึกแถวคูหา',2400,34],['condo','คอนโด',5800,88]],
-  'ค้าขาย':[['market','กาดชุมชน',1300],['shop','ร้านโชห่วย',850],['mall','ห้างสรรพสินค้า',6200]],
+  'แบ่งเขต':[['zoneR','เขตที่อยู่อาศัย',280],['zoneC','เขตพาณิชยกรรม',420],['zoneI','เขตอุตสาหกรรม',560]],
+  'อุตสาหกรรม':[['mill','โรงสีข้าว',2400],['kiln','โรงงานเซรามิก',3200]],
+  'ที่อยู่อาศัย':[['wood','บ้านไม้ยกพื้น',800,12],['modern','บ้านปูนโมเดิร์น',1400,20],['row','ตึกแถวคูหา',2400,34],['condo','คอนโด',5800,88],['court','บ้านล้อมลาน',1900,28]],
+  'ค้าขาย':[['market','กาดชุมชน',1300],['shop','ร้านโชห่วย',850],['mall','ห้างสรรพสินค้า',6200],['cafe','ร้านกาแฟริมทาง',1150]],
   'เกษตร':[['cane','ไร่อ้อย',650],['cassava','ไร่มันสำปะหลัง',520],['soy','ไร่ถั่วเหลือง',440],['pineapple','ไร่สับปะรด',760],['orchard','สวนผลไม้',980],['veg','แปลงผัก',380],['livestock','ฟาร์มปศุสัตว์',1250]],
   'เหมือง':[['coal','เหมืองถ่านหิน',1950],['gold','เหมืองทองคำ',3400],['silver','เหมืองเงิน',2700],['copper','เหมืองทองแดง',2100]],
   'โครงสร้าง':[['road','ถนนลาดยาง',120],['poleWood','เสาไม้ · 3 ช่อง',250],['poleConcrete','เสาคอนกรีต · 5 ช่อง',480],['pylon','เสาแรงสูง · 8 ช่อง',1200],['plant','โรงไฟฟ้าถ่านหิน',3700]],
-  'ชุมชน':[['park','สวนสาธารณะ',650],['school','โรงเรียน',1700],['clinic','สถานีอนามัย',1900],['temple','วัดล้านนา',2400]]
+  'ชุมชน':[['park','สวนสาธารณะ',650],['school','โรงเรียน',1700],['clinic','สถานีอนามัย',1900],['temple','วัดล้านนา',2400],['fire','สถานีดับเพลิง',2100],['drain','สถานีสูบน้ำ',1750]]
 };
 const catalog=Object.fromEntries(Object.entries(GROUPS).flatMap(([group,rows])=>rows.map(([id,name,cost,capacity])=>[id,{id,name,cost,capacity,group}])));
 const N=26, range={poleWood:3,poleConcrete:5,pylon:8,plant:3}, key=(i,j)=>i+','+j;
 const roles=['นายกเทศมนตรีตำบล','ผู้บริหารระดับอำเภอ','ผู้บริหารระดับจังหวัด','สมาชิกสภาผู้แทนราษฎร','นายกรัฐมนตรี'];
 // The western road tile is the town entrance: every road network is traced from it.
 const ENTRANCE='2,14',BRIDGE_COST=420,LOAN=4000,LOAN_RATE=1.1,DEBT_PAYMENT=220;
-const COMMUNITY={park:120,school:150,clinic:200,temple:300}; // residents served per building
+const COMMUNITY={park:120,school:150,clinic:200,temple:300,fire:240,drain:200}; // residents served per building
 const SHOP_WEIGHT={shop:1,market:1.5,mall:4};
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 function terrain(i,j){let d=j-(3.3+Math.sin(i*.28)*1.45+i*.12);return Math.abs(d)<1.12?'water':Math.abs(d)<1.7?'bank':'land'}
@@ -100,12 +109,14 @@ function analyze(s){
  for(let n=0;n<live.length;n++)for(const e of nodes)if(!live.includes(e)&&e.id!=='plant'&&distance(e.p,live[n].p)<=Math.max(range[e.id],range[live[n].id]))live.push(e);
  const powered=p=>live.some(e=>distance(e.p,p)<=range[e.id]);
  let capacity=0,jobs=0,farmTrade=0,shopTrade=0,shopSlots=0,dirty=0,served=0,used=0,upkeep=0;
- const service={park:0,school:0,clinic:0,temple:0},mines=[],parks=[];
+ const service={park:0,school:0,clinic:0,temple:0,fire:0,drain:0},mines=[],parks=[];
  for(const e of entries){let a=catalog[e.id];upkeep+=Math.ceil(buildCost(e.id,...e.p)*.004);if(e.id==='road'||range[e.id])continue;
  let connected=access(e.p),lit=powered(e.p),factor=connected?(lit?1:.35):.08;
  used++;if(lit)served++;
  capacity+=(a.capacity||0)*factor;
  if(['เกษตร','เหมือง','ค้าขาย'].includes(a.group))jobs+=Math.round((8+a.cost/130)*factor);
+ if(a.group==='อุตสาหกรรม'){jobs+=Math.round((e.id==='mill'?28:39)*factor);farmTrade+=a.cost*.049*factor;if(connected)dirty+=1}
+ if(a.group==='แบ่งเขต')continue;
  if(a.group==='เกษตร')farmTrade+=a.cost*.042*factor;
  if(a.group==='เหมือง'){farmTrade+=a.cost*.056*factor;mines.push(e.p)}
  if(a.group==='ค้าขาย'){shopTrade+=a.cost*.042*factor;shopSlots+=(SHOP_WEIGHT[e.id]||1)*factor}
@@ -122,7 +133,33 @@ function analyze(s){
  const coverage=used?Math.round(100*served/used):0, income=Math.round(s.pop*s.tax*.43*(1+.15*edu)+trade),expense=Math.round(upkeep+s.services*(60+s.pop*.3)+debtPay);
  const jobFill=Math.min(1,jobs/Math.max(1,s.pop*.65)),care=2.5*(park+edu+health+faith);
  const target=clamp(35+coverage*.18+jobFill*13+care+s.services*4-(s.tax-8)*2-dirty-(s.cash<0?14:0),8,96);
- return {roads,live,powered,access,capacity:Math.floor(capacity),jobs,coverage,income,expense,target,trade,demand,park,edu,health,faith,jobFill,debtPay,dirty};
+ return {roads,live,powered,access,capacity:Math.floor(capacity),jobs,coverage,income,expense,target,trade,demand,park,edu,health,faith,jobFill,debtPay,dirty,fire:cover("fire"),drain:cover("drain")};
+}
+const zonePlans={zoneR:['court','modern'],zoneC:['cafe','shop'],zoneI:['mill','kiln']};
+function demandLevels(s,a){
+ const score=v=>clamp(Math.round(v),0,100);
+ return {zoneR:score(65+(s.pop-a.capacity)*1.1+(a.jobFill-.6)*30-(s.tax-8)*4),
+  zoneC:score(a.demand?((a.demand-.4)*115):s.pop*.8),
+  zoneI:score(55+(s.pop*.75-a.jobs)*1.1)};
+}
+function develop(s,a){
+ const demand=demandLevels(s,a);
+ const sites=Object.entries(s.cells).filter(([k,id])=>{
+  if(!zonePlans[id]||demand[id]<30)return false;
+  const p=k.split(',').map(Number);return a.access(p)&&a.powered(p);
+ }).sort((a,b)=>demand[b[1]]-demand[a[1]]);
+ if(!sites.length)return '';
+ const [k,id]=sites[0],choices=zonePlans[id],building=choices[(s.month+Number(k.split(',')[0]))%choices.length];
+ s.cells[k]=building;return 'เอกชนเปิด'+catalog[building].name;
+}
+function townEvent(s,a){
+ const quarter=Math.floor((s.month-1)/12)%2;
+ const options=quarter?
+  [[2,'ตลาดงานช่าง',Math.round(a.jobs*2),2],[5,'ลมร้อนและไฟไหม้',-Math.round(700-560*a.fire),-Math.round(3*(1-a.fire))],[8,'ฝนหลาก',-Math.round(850-700*a.drain),-Math.round(3*(1-a.drain))],[11,'งานบุญโคมล้านนา',Math.round(220+350*a.faith),3]]:
+  [[2,'งานกาดเซรามิก',Object.values(s.cells).includes('kiln')?780:260,2],[5,'ไฟไหม้ยุ้งฉาง',-Math.round(600-500*a.fire),-Math.round(3*(1-a.fire))],[8,'ซ่อมทางหลังฝนหนัก',-Math.round(720-580*a.drain),-1],[11,'เทศกาลเก็บเกี่ยว',Math.round(140+a.trade*.45),2]];
+ const e=options.find(e=>e[0]===s.month%12);if(!e)return '';
+ s.cash+=e[2];s.approval=clamp(s.approval+e[3],0,100);
+ return e[1]+' · เงินคลัง '+(e[2]>=0?'+':'−')+'฿'+Math.abs(e[2]).toLocaleString('th-TH')+' · นิยม '+(e[3]>=0?'+':'')+e[3];
 }
 function average(list,fallback){return list?.length?list.reduce((a,b)=>a+b,0)/list.length:fallback}
 // Advances one month. Returns an election result object in election months, otherwise null.
@@ -132,6 +169,7 @@ function advance(s){
  const desire=a.capacity*(.6+.4*a.jobFill)*(s.approval<35?.85:1),gap=desire-s.pop,rate=gap>0?.08+.06*a.health:.12;
  s.pop=Math.max(0,Math.round(s.pop+Math.sign(gap)*Math.min(Math.abs(gap),Math.ceil(Math.abs(gap)*rate))));
  s.approval=Math.round((s.approval+a.target)*5)/10;
+ const report=[develop(s,a),townEvent(s,a)].filter(Boolean);if(report.length)s.news=report.join(" • ");
  s.hist=[...(s.hist||[]),s.approval].slice(-6);
  if(s.opposition){
   // The rival council governs: its popularity drifts and slowly wears down in office.
@@ -299,6 +337,27 @@ function drawAsset(ctx, id, x, y, s = 1, seed = 0, orientation=0, mesh=null, win
     }
   }
   if(['cane','cassava','soy','pineapple','veg'].includes(id)) field(id);
+  else if(zonePlans[id]){
+    const c={zoneR:'#8ecc97',zoneC:'#82b9e0',zoneI:'#edc878'}[id];
+    slab(-16,-16,32,32,.15,c);
+    for(const u of [-15,14])for(const v of [-15,14])box(u,v,1.4,1.4,0,2.7,wood);
+    for(const u of [-9,0,9])line([u,-11,.22],[u,11,.22],'#fff0cd',.85);
+  } else if(id==='court'){
+    for(const u of [-14,2]){box(u,-9,12,17,0,8,plaster);windowRow(u,-9,12,17,3,2,3);roof(u-1,-10,14,19,8,6,tile)}
+    slab(-3,8,6,10,.2,'#d4b795');tree(-9,12,5,3);
+  } else if(id==='cafe'){
+    box(-12,-10,24,18,0,10,wood);windowRow(-12,-10,24,18,2,3,6);roof(-14,-12,28,22,10,5,teal);
+    for(let u=-12;u<12;u+=4)face([[u,8,8],[u+4,8,8],[u+4,14,6],[u,14,6]],u%8?'#ffdfb2':'#b96e72');
+    box(7,13,4,3,0,3,wood);
+  } else if(id==='mill'||id==='kiln'){
+    box(-14,-12,22,23,0,10,plaster);windowRow(-14,-12,22,23,3,3,4);roof(-15,-13,24,25,10,6,id==='mill'?teal:tile);
+    if(id==='mill'){for(const v of [-9,2]){box(8,v,7,8,0,14,concrete);roof(7,v-1,9,10,14,4,teal)}}
+    else{box(8,-9,5,5,0,23,wood);box(7,-10,7,7,22,2,tile);for(const u of [8,13])ground(u,8,2,3,2.4,'#c78060')}
+  } else if(id==='fire'||id==='drain'){
+    box(-13,-11,26,20,0,10,white);box(-14,-12,28,22,10,2,id==='fire'?tile:teal);
+    if(id==='fire'){for(const u of [-10,2]){box(u,9,9,1,0,7,wood);for(let z=2;z<7;z+=2)line([u,10,z],[u+9,10,z],'#e79a7f',.7)}box(7,-10,5,5,12,8,tile)}
+    else{for(const u of [-8,6]){ground(u,0,12,5,3,'#75bfc4');box(u-2,8,4,7,0,3,teal)}}
+  }
   else if(id==='tree') {if(seed%4===1){palm(-3,-4,25);palm(6,3,16)}else{tree(-6,-3,17+random()*7,9+random()*3);tree(5,4,10+random()*5,6+random()*3)}}
   else if(id==='bankPlants'){
     for(let n=0;n<8;n++){
@@ -598,10 +657,10 @@ function drawNeighbor(g,x,y,shirt){
  oval(0,-6.1,.64,.32,'#b56969');g.restore();
 }
 function bakeIllustrations(){
- const names=['wood','modern','row','condo','temple','market','school','clinic','tree','park','livestock','cane','cassava','soy','pineapple','orchard','veg','shop','mall','coal','gold','silver','copper','plant','bankPlants'];
+ const names=['wood','modern','row','condo','temple','market','school','clinic','tree','park','livestock','cane','cassava','soy','pineapple','orchard','veg','shop','mall','coal','gold','silver','copper','plant','bankPlants','zoneR','zoneC','zoneI','mill','kiln','cafe','court','fire','drain'];
  const neighbors={wood:'#ec8585',modern:'#67acae',school:'#7497c2',market:'#ed9863',shop:'#a386bd',park:'#edb459'};
  const cell=192,cols=8,atlas=document.createElement('canvas');
- atlas.width=cols*cell;atlas.height=8*cell;
+ atlas.width=cols*cell;atlas.height=2*Math.ceil((names.length+4)/cols)*cell;
  const g=atlas.getContext('2d');let slot=0;
  for(const id of names){
   const pieces=[];illustratedPieces.set(id,pieces);
@@ -1046,7 +1105,13 @@ function placeProblem(i,j,tool){
 }
 function rangeTiles(i,j,r,out){for(let a=-r;a<=r;a++)for(let b=Math.abs(a)-r;b<=r-Math.abs(a);b++)if(a||b)out.push({i:i+a,j:j+b,color:'#ffe07a',a:.11,small:1})}
 function highlights(now){
- const out=[],pulse=reduceMotion?1:.78+.22*Math.sin(now/180);
+ const out=[];
+ if(cityLayer)for(const [k,id] of Object.entries(city.cells)){
+  if(id==='road')continue;const [i,j]=k.split(',').map(Number);
+  const ok=cityLayer===1?stats.powered([i,j]):stats.access([i,j]);
+  out.push({i,j,ring:1,color:ok?'#4cddae':'#ff634e',a:.88});
+ }
+ const pulse=reduceMotion?1:.78+.22*Math.sin(now/180);
  if(hover&&hover.every(v=>v>=0&&v<N)){
   const [i,j]=hover,id=city.cells[key(i,j)];
   if(selected==='sell'){out.push({i,j,color:id?'#ff7a4f':'#ff9f8a',a:(id?.34:.14)*pulse},{i,j,ring:1,color:'#ff7a4f',a:.9})}
@@ -1248,7 +1313,11 @@ function pause(){if(!timer)return;clearInterval(timer);timer=null;$('play').inne
 function setSpeed(n){city.speed=((n%SPEEDS.length)+SPEEDS.length)%SPEEDS.length;$('speed').textContent=SPEED_LABELS[city.speed];if(timer)startTimer();save();emit('speed',{speed:city.speed,label:SPEED_LABELS[city.speed]})}
 const CASH_LOW=2000;let lastNews=null,cashWasLow=null;
 function refresh(){
- stats=analyze(city);$('cash').textContent='฿'+fmt(city.cash);$('pop').textContent=fmt(city.pop);$('approval').textContent=Math.round(city.approval)+'%';
+ stats=analyze(city);
+ const demand=demandLevels(city,stats);
+ $('rci').innerHTML=Object.entries(demand).map(([id,n],i)=>'<div><span>'+['บ้าน','ค้า','งาน'][i]+'</span><meter min="0" max="100" value="'+n+'"></meter><b>'+n+'%</b></div>').join('');
+ const net=stats.income-stats.expense;$('balance').textContent='ดุลรายเดือน '+(net>=0?'+':'−')+'฿'+fmt(Math.abs(net));
+ $('cash').textContent='฿'+fmt(city.cash);$('pop').textContent=fmt(city.pop);$('approval').textContent=Math.round(city.approval)+'%';
  $('date').textContent=new Intl.DateTimeFormat('th-TH',{month:'short',year:'numeric'}).format(new Date(2026,city.month,1));$('news').textContent=city.news;
  if(lastNews!==null&&city.news!==lastNews)emit('news',{text:city.news});lastNews=city.news;
  const low=city.cash<CASH_LOW;$('cash').classList.toggle('low',low);if(low&&cashWasLow===false)emit('cash-low',{cash:city.cash});cashWasLow=low;
@@ -1345,6 +1414,8 @@ function handleTap(x,y){
 }
 function fold(hide){$('panel').classList.toggle('hide',hide);$('unfold').style.display=hide?'block':'none'}
 $('fold').onclick=()=>fold(true);$('unfold').onclick=()=>fold(false);
+let cityLayer=0;
+$('layer').onclick=()=>{cityLayer=(cityLayer+1)%3;$('layer').textContent=['ชั้นข้อมูล','ไฟฟ้า','ทางเข้า'][cityLayer];$('layer').setAttribute('aria-pressed',String(!!cityLayer));if(cityLayer)tell('เขียว = เข้าถึง'+(cityLayer===1?'ไฟฟ้า':'ถนน')+' • แดง = ขาดการเชื่อมต่อ');render()};
 function selectTool(id){
  const changed=id!==selected;
  selected=id;hover=null;canvas.style.cursor=id?'crosshair':'default';
@@ -1382,13 +1453,21 @@ addEventListener('keydown',e=>{
 function itemStats(id){
  const a=catalog[id];
  if(id==='road')return 'สะพานข้ามน้ำ ฿'+fmt(BRIDGE_COST);
+ if(zonePlans[id])return 'พัฒนาเมื่อมีถนน ไฟ และความต้องการ ≥30%';
+ if(id==='fire'||id==='drain')return id==='fire'?'ลดความเสียหายจากไฟไหม้':'ลดค่าซ่อมจากน้ำหลาก';
+ if(a.group==='อุตสาหกรรม')return 'งาน '+(id==='mill'?28:39)+' · มลพิษ +1';
  if(range[id])return 'จ่ายไฟ '+range[id]+' ช่อง'+(id==='plant'?' · ใช้ถ่านหิน':'');
  if(a.capacity)return '+'+a.capacity+' คน';
  if(a.group==='ชุมชน')return {park:'ลดมลพิษเหมือง',school:'ภาษี +15%',clinic:'คนย้ายเข้าเร็ว',temple:'ความนิยม'}[id]+' · ~'+COMMUNITY[id]+' คน';
  return 'งาน '+Math.round(8+a.cost/130)+' · ฿'+fmt(a.cost*(a.group==='เหมือง'?.056:.042))+'/ด.'+(a.group==='เหมือง'?' · มลพิษ':'');
 }
-function list(){let rows=GROUPS[$('group').value];$('items').replaceChildren();for(const [id,name,cost] of rows){let b=document.createElement('button');b.className='item'+(id===selected?' active':'');b.setAttribute('aria-pressed',String(id===selected));b.dataset.tool=id;b.innerHTML='<canvas width="92" height="78"></canvas><span><strong>'+name+'</strong><small>฿ '+fmt(cost)+'</small><small class="stat">'+itemStats(id)+'</small></span>';let g=b.firstChild.getContext('2d');if(id==='road'){g.fillStyle='#626e68';g.fillRect(14,42,60,13)}else sprite(g,id,46,59,.72,1);b.onclick=()=>{selectTool(id);if(innerWidth<720)fold(true)};$('items').append(b)}}
-for(const name of Object.keys(GROUPS))$('group').add(new Option(name,name));$('group').onchange=list;
+function list(){for(const b of $('buildTabs').children)b.setAttribute('aria-pressed',String(b.dataset.group===$('group').value));let rows=GROUPS[$('group').value];$('items').replaceChildren();for(const [id,name,cost] of rows){let b=document.createElement('button');b.className='item'+(id===selected?' active':'');b.setAttribute('aria-pressed',String(id===selected));b.dataset.tool=id;b.innerHTML='<canvas width="92" height="78"></canvas><span><strong>'+name+'</strong><small>฿ '+fmt(cost)+'</small><small class="stat">'+itemStats(id)+'</small></span>';let g=b.firstChild.getContext('2d');if(id==='road'){g.fillStyle='#626e68';g.fillRect(14,42,60,13)}else sprite(g,id,46,59,.72,1);b.onclick=()=>{selectTool(id);if(innerWidth<720)fold(true)};$('items').append(b)}}
+for(const name of Object.keys(GROUPS)){
+ $('group').add(new Option(name,name));
+ const button=document.createElement('button');button.textContent=name;button.dataset.group=name;
+ button.onclick=()=>{$('group').value=name;selectTool(null);fold(false)};$('buildTabs').append(button);
+}
+$('group').value='แบ่งเขต';$('group').onchange=()=>selectTool(null);
 
 // ---- Council and politics dialog ----
 let resetArmed=0;
